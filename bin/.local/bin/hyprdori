@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# Every Hyprdori command with what it does, in a line each, taken from the first sentence of the
+# command's own help; or one of them run by its short name.
+#
+#   hyprdori                  the list
+#   hyprdori NAME [ARGS...]   runs hyprdori-NAME: hyprdori update, hyprdori theme-set nord
+#   hyprdori NAME -h          that command's help
+
+# -h, --help: the comment above, then nothing else runs
+case ${1:-} in -h | --help) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; exit 0 ;; esac
+set -uo pipefail
+
+bin=$(dirname "$(readlink -f "$0")")
+
+if (($#)); then
+    command=$bin/hyprdori-$1
+    [[ -x $command ]] || { echo "hyprdori: no command hyprdori-$1 (hyprdori lists them)" >&2; exit 1; }
+    shift
+    exec "$command" "$@"
+fi
+
+# The first sentence of a command's help: its opening comment, or a Python command's docstring
+summary() {
+    awk '
+        NR == 1 { next }
+        {
+            line = $0
+            if (line ~ /^"""/) { python = 1; sub(/^"""/, "", line) }
+            else if (!python) { if (line !~ /^#/) exit; sub(/^# ?/, "", line) }
+            if (line ~ /"""[[:space:]]*$/) { sub(/"""[[:space:]]*$/, "", line); last = 1 }
+            if (line ~ /^[[:space:]]*$/) exit
+            text = text (text == "" ? "" : " ") line
+            if (match(text, /\. /)) { text = substr(text, 1, RSTART - 1); exit }
+            if (line ~ /:$/) exit   # a list follows
+            if (last) exit
+        }
+        END { sub(/[.:]$/, "", text); print text }' "$1"
+}
+
+width=$(tput cols 2>/dev/null || echo 100)
+names=() longest=0
+for command in "$bin"/hyprdori-*; do
+    name=${command##*/hyprdori-}
+    names+=("$name")
+    ((${#name} > longest)) && longest=${#name}
+done
+room=$((width - longest - 3))
+for name in "${names[@]}"; do
+    text=$(summary "$bin/hyprdori-$name")
+    ((room > 20 && ${#text} > room)) && text=${text:0:room-1}…
+    # the name in the accent's place (bold), the sentence plain; no colors into a pipe
+    if [[ -t 1 ]]; then
+        printf '\e[1m%-*s\e[0m  %s\n' "$longest" "$name" "$text"
+    else
+        printf '%-*s  %s\n' "$longest" "$name" "$text"
+    fi
+done
