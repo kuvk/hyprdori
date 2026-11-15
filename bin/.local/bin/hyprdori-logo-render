@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Draws a text logo (by default ~/.config/theme/logo/dori-logo) to a transparent PNG the way kitty
-draws it in a terminal: every character on a grid of cells as kitty's (JetBrains Mono's: 45.5%
-as wide as tall), braille as 2x4 dots, block characters (▄ ▌ ▙ ...) as exact rectangles and
-Nerd Font's triangles (◢ ◣ ◤ ◥, U+E0B8 to U+E0BE) as exact triangles filling their cell. Font glyphs
-for these don't fit the cell exactly, so text renderers leave seams and overlap rows; drawn
-as shapes the logo is sharp at any size and the same everywhere. Shades (░ ▒ ▓), which kitty
-draws as dot patterns, are see-through fills of their cell (25, 50 and 75%), smooth at any
-size; the middle dot (·) is a small square where the font puts it, the black square (■) a square
+"""Draws a text logo to a transparent PNG the way kitty draws it. By default
+~/.config/theme/logo/dori-logo, as in a terminal: every character on a grid of cells as kitty's
+(JetBrains Mono's: 45.5% as wide as tall), braille as 2x4 dots, block characters (▄ ▌ ▙ ...) as
+exact rectangles and Nerd Font's triangles (◢ ◣ ◤ ◥, U+E0B8 to U+E0BE) as exact triangles filling
+their cell. Font glyphs for these don't fit the cell exactly, so text renderers leave seams and
+overlap rows; drawn as shapes the logo is sharp at any size and the same everywhere. Shades (░ ▒ ▓),
+which kitty draws as dot patterns, are see-through fills of their cell (25, 50 and 75%), smooth at
+any size; the middle dot (·) is a small square where the font puts it, the black square (■) a square
 as wide as the cell, centered in it, as JetBrains Mono draws both. Used by the wallpaper
 (hyprdori-logo-wallpaper), the boot splash (plymouth/install.sh) and the boot menu
 (limine/install.sh), like fastfetch in kitty and the System Information window.

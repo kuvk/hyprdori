@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Keybindings from ~/.config/hypr/configs/bindings.lua as JSON, for the
-Quickshell Keybindings window (mainMod + SHIFT + /).
+"""The keybindings as JSON, for the shell's Keybindings window. Read from
+~/.config/hypr/configs/bindings.lua (mainMod + SHIFT + / opens the window).
 
 In bindings.lua:
   -- Section name                      starts a section (a comment line on its own)

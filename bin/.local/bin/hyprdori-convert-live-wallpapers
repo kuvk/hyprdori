@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Lighter copies of videos for live wallpapers (ffmpeg, H.264): each video in
+"""Lighter copies of videos for live wallpapers. With ffmpeg, as H.264: each video in
 ~/.local/share/hyprdori/backgrounds/live/source (the wallpaper picker skips that folder) into
 ~/.local/share/hyprdori/backgrounds/live, 2560 px wide at 30 fps. Settings by environment:
 LIVE_WALLPAPER_SRC and LIVE_WALLPAPER_OUT (the folders), TARGET_W, TARGET_FPS, CRF, PRESET.

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# The look of Hyprdori's terminal windows that explain something, ask, then run it (the boot
-# screens' and the system's updates), in the theme's colors: the text logo on top, a framed
+# The look of the terminal windows that explain, ask, then run something. For the boot
+# screens' and the system's updates, in the theme's colors: the text logo on top, a framed
 # explanation, buttons to answer, and a line to close. Drawn with gum when it's installed,
 # plain text and Y/n questions without it. After Omarchy's presentation windows
 # (https://github.com/basecamp/omarchy, MIT).

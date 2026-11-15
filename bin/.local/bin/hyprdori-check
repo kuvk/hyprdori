@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Checks Hyprdori before a commit: every script and the shell's files parse, shellcheck finds
+# Checks Hyprdori before a commit. Every script and the shell's files parse, shellcheck finds
 # nothing in the scripts, every theme renders, values kept in more than one place agree, and no
 # old names are left. Prints what's wrong and exits 1, or says all is well. Takes about a
 # second; writes nothing, and nothing runs in the background.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Spotify in the theme's colors, through Spicetify: its "hyprdori" theme, which
+# Spotify in the theme's colors, through Spicetify. Its "hyprdori" theme is the one
 # hyprdori-theme-set writes for every theme (~/.config/spicetify/Themes/hyprdori: color.ini and
 # user.css) and refreshes on every switch. This sets it up once: Spicetify pointed at Spotify (as
 # spotify-launcher installs it) and at that theme, then Spotify patched (spicetify backup apply).

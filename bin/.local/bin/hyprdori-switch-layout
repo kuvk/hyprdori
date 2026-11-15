@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The next keyboard layout on every keyboard (Hyprland's xkb layouts, input.lua). Called by the
+# The next keyboard layout on every keyboard. From Hyprland's xkb layouts (input.lua). Called by the
 # bar's layout button (services/Hypr.qml); Alt+Space does the same in Hyprland itself.
 #
 #   hyprdori-switch-layout

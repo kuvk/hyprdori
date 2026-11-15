@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Log out, reboot or shut down once the open apps have closed: every window is asked to close,
+# Log out, reboot or shut down once the open apps have closed. Every window is asked to close,
 # as its own close button would, and when all are gone within 5 seconds the session ends. A
 # window still open then (an app asking about unsaved work) cancels it: nothing is lost, and a
 # notification names the apps to see to. The on-screen display says what's happening.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# A notification from one of Hyprdori's commands: each sender's name and icon are kept here, so
+# A notification from one of Hyprdori's commands. Each sender's name and icon are kept here, so
 # every notification of a kind looks the same, and the shell knows them by these names (its
 # services/Notifs.qml gives Theme and Wallpapers the bar's own icons). Without notify-send
 # installed nothing happens.

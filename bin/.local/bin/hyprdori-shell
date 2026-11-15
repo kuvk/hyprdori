@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Quickshell, started again if it crashes: the lock screen is part of it, and Hyprland keeps
+# Quickshell, started again if it crashes. The lock screen is part of it, and Hyprland keeps
 # the session locked until a new one takes the lock over (it locks again at start when Hyprland
 # still holds a lock). Stops with Hyprland, when the shell quits on its own (exit 0), or after
 # it failed within seconds of starting 5 times in a row: Hyprland restarted after its own crash

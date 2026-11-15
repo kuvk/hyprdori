@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# System monitor: btop (through ~/.local/bin/btop, which keeps a sleeping NVIDIA card asleep) in a
-# kitty window of its own, floated and centered by a Hyprland rule (rules.lua, class
+# System monitor: btop in a kitty window of its own. Through ~/.local/bin/btop, which keeps a
+# sleeping NVIDIA card asleep; floated and centered by a Hyprland rule (rules.lua, class
 # hyprdori-sysmon). There's only ever one: run again while it's open, it's brought to the front.
 # btop's own launcher entry is hidden, so this is the system monitor in the app launcher.
 #

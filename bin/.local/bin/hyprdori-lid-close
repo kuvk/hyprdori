@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# The lid closed (bindings.lua): lock at once, unless an external monitor is connected, which
-# makes it a docked laptop still in use (logind doesn't suspend then either): then the laptop's
-# screen goes off instead (clamshell, hyprdori-monitors lid). Locking here gives the lock a head
-# start on logind's suspend; hyprdori-sleep-lock then finds it secure. After Omarchy's
+# What happens when the lid closes. From bindings.lua: lock at once, unless an external monitor is
+# connected, which makes it a docked laptop still in use (logind doesn't suspend then either): then
+# the laptop's screen goes off instead (clamshell, hyprdori-monitors lid). Locking here gives the
+# lock a head start on logind's suspend; hyprdori-sleep-lock then finds it secure. After Omarchy's
 # omarchy-system-lid-close (github.com/basecamp/omarchy, MIT).
 
 # -h, --help: the comment above, then nothing else runs

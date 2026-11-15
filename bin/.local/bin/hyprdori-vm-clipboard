@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# In a virtual machine: the clipboard between X11 and Wayland apps, so the one shared with the host
-# (spice-vdagent, which only knows X11's) reaches every app. Hyprland's own bridge between the two
-# doesn't carry it there. Text only, both ways, each copied only when it differs from the other
-# side's (no loops). Waits for changes (clipnotify, wl-paste --watch): no polling.
+# In a virtual machine: the clipboard carried between X11 and Wayland apps. So the one shared with
+# the host (spice-vdagent, which only knows X11's) reaches every app. Hyprland's own bridge between
+# the two doesn't carry it there. Text only, both ways, each copied only when it differs from the
+# other side's (no loops). Waits for changes (clipnotify, wl-paste --watch): no polling.
 # hyprdori-autostart starts it in a VM; remove it there to go without.
 #
 #   hyprdori-vm-clipboard            keep the two in step (until logout)

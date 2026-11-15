@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# One-time setup so hyprdori-theme-set can color Chromium and Brave (Settings >
-# Appearance > Theme must be "Classic"). The color
+# One-time setup so hyprdori-theme-set can color Chromium and Brave. Their Settings >
+# Appearance > Theme must be "Classic". The color
 # goes into the browsers' managed policy (BrowserThemeColor). Those folders
 # belong to root, so this installs a small root-owned helper that only accepts
 # a 6-digit hex color, and a sudoers rule that lets the user run exactly that

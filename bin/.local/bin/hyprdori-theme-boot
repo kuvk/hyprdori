@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The boot splash (Plymouth) and boot menu (Limine) in the current theme: runs both
+# The boot splash (Plymouth) and boot menu (Limine) in the current theme. Runs both
 # installers with one password prompt, and copies the login screen's theme (sddm/hyprdori)
 # where SDDM reads it. They read the theme and logo when they run, so a theme or accent
 # change shows at boot only after this; the login screen's colors follow on their own.

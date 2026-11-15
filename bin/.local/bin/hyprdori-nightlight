@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Night light (hyprsunset) at the temperature from Settings > Screen & Sleep > Night light.
+# The night light (hyprsunset). At the temperature from Settings > Screen & Sleep > Night light.
 #
 #   hyprdori-nightlight           toggle
 #   hyprdori-nightlight on|off    set it (the schedule in services/System.qml)

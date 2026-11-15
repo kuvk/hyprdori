@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# A short message on the shell's on-screen display: an icon and a line of text at the bottom of
+# A short message on the shell's on-screen display. An icon and a line of text at the bottom of
 # the focused monitor, gone by itself, for what was just switched on or off. Nothing is kept, as
 # a notification would be. Without the shell running, a notification instead.
 #

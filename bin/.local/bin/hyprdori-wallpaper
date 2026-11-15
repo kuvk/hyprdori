@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Wallpapers and live (video) wallpapers, used by the Quickshell carousel, and the lock
-screen's background.
+"""Wallpapers, live (video) wallpapers and the lock screen's background. Used by the Quickshell
+carousel.
 
 Static wallpapers live in ~/.local/share/hyprdori/backgrounds/default and are shown with
 hyprpaper; each theme's own (hyprdori-theme-set, hyprdori-logo-wallpaper --window) are in a folder

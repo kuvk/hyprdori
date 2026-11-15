@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Wallpapers on a plain color with the middle left for the lock and login screens' password
-field: the logo (~/.config/theme/logo/dori-logo) above it and the text logo (dori-text) below,
-both centered across and drawn on the same grid.
+"""Wallpapers of the logos on a plain color. The middle is left for the lock and login screens'
+password field: the logo (~/.config/theme/logo/dori-logo) above it and the text logo (dori-text)
+below, both centered across and drawn on the same grid.
 
 Colors are theme color names from the current theme (background, accent, magenta, ...)
 or hex values (#1e1e2e). --bg, --fg, --text-fg and --size take comma-separated lists, and every

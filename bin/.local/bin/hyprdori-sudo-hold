@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Asks for the sudo password once (sudo -v; not at all while sudo still has it), then keeps sudo's
-# hold on it fresh until a long script ends, so slow downloads and builds don't make sudo ask
-# again halfway. Every 60 s it renews sudo's timestamp (sudo -n -v: never asks, nothing else
-# runs), which is kept for this terminal only and ends with the script, or at most a minute
-# later. Sudo already keeps a password 5 minutes after it's typed; this only stretches that to
-# the script's run. install.sh and hyprdori-update (and the update window's choices) use it.
+# Asks for the sudo password once, then keeps it until a long script ends. With sudo -v (not at all
+# while sudo still has it); sudo's hold on it is kept fresh, so slow downloads and builds don't make
+# sudo ask again halfway. Every 60 s it renews sudo's timestamp (sudo -n -v: never asks, nothing
+# else runs), which is kept for this terminal only and ends with the script, or at most a minute
+# later. Sudo already keeps a password 5 minutes after it's typed; this only stretches that to the
+# script's run. install.sh and hyprdori-update (and the update window's choices) use it.
 #
 #   hyprdori-sudo-hold PID   ask now, then hold until PID (the calling script, $$) exits;
 #                            exits 1 when the password isn't given

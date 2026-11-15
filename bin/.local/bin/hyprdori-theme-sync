@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Copies Omarchy's themes into Hyprdori's theme folder, as they are: each theme's
+"""Copies Omarchy's themes into Hyprdori's theme folder, as they are. Each theme's
 colors.toml, neovim.lua, icons.theme, keyboard.rgb and shell.lock.toml, and Omarchy's
 licence. Not their backgrounds (about 160 MB); Hyprdori draws each theme's own.
 Says which themes are new, changed or gone, and asks before copying.

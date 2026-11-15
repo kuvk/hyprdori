@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Keeps the machine awake while a long script runs (an update, a clean-up, the boot screens'
-# rebuild, the install): holds logind's idle lock (systemd-inhibit --what=idle), which the
+# Keeps the machine awake while a long script runs. For an update, a clean-up, the boot screens'
+# rebuild and the install: holds logind's idle lock (systemd-inhibit --what=idle), which the
 # shell's idle timer waits for before locking or sleeping, until the script ends. On a laptop
 # running on battery it first says so and asks whether to go on; machines without a battery
 # (peripherals' batteries don't count) are never asked. While it holds the lock it checks the

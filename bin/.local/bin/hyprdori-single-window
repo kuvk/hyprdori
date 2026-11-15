@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Single window: a lone tiled window keeps the shape set in
-# ~/.config/hypr/configs/single-window.lua (layout:single_window_aspect_ratio) instead
-# of filling the screen. SUPER+SHIFT+S turns it on and off; it stays as left across
+# Single window: a lone tiled window keeps a set shape and doesn't fill the screen. The shape
+# is in ~/.config/hypr/configs/single-window.lua (layout:single_window_aspect_ratio).
+# SUPER+SHIFT+S turns it on and off; it stays as left across
 # reloads and restarts (hyprland.lua loads the file while the flag exists).
 #
 #   hyprdori-single-window          on, or off if on

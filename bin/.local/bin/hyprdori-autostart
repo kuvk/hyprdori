@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# What else starts at login (autostart.lua runs this once): clipboard history, the snapshot
+# What else starts at login. autostart.lua runs this once: clipboard history, the snapshot
 # notifications, Spotify's theme setup (hyprdori-spicetify) and ROG Control Center when
 # installed; more can be added below. Running it again would start them twice.
 #
