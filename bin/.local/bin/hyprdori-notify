@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# A notification from one of Hyprdori's commands: each sender's name and icon are kept here, so
+# every notification of a kind looks the same, and the shell knows them by these names (its
+# services/Notifs.qml gives Theme and Wallpapers the bar's own icons). Without notify-send
+# installed nothing happens.
+#
+#   hyprdori-notify SENDER TITLE [BODY] [notify-send's options...]
+#
+# SENDER: theme, wallpapers, update, boot, lock, session, spotify, sysinfo, osd. What follows goes
+# to notify-send as it is (-u critical, -A update=Update, -c x-hyprdori.hint for a smaller key
+# hint as the body), and what notify-send prints (the button clicked) is printed.
+
+# -h, --help: the comment above, then nothing else runs
+case ${1:-} in -h | --help | "") awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; exit 0 ;; esac
+set -uo pipefail
+
+case $1 in
+    theme) sender=(-a Theme -i preferences-desktop-theme) ;;
+    wallpapers) sender=(-a Wallpapers -i preferences-desktop-wallpaper) ;;
+    update) sender=(-a "System update" -i system-software-update) ;;
+    session) sender=(-a Session -i system-shutdown) ;;
+    boot) sender=(-a "Boot screens") ;;
+    lock) sender=(-a "Lock screen") ;;
+    spotify) sender=(-a Spotify) ;;
+    sysinfo) sender=(-a "System Information") ;;
+    osd) sender=(-a Hyprdori) ;;
+    *) echo "hyprdori-notify: no sender $1 (theme, wallpapers, update, boot, lock, session, spotify, sysinfo, osd)" >&2; exit 1 ;;
+esac
+shift
+command -v notify-send >/dev/null || exit 0
+exec notify-send "${sender[@]}" "$@"

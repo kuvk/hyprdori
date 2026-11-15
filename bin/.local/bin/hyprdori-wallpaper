@@ -470,8 +470,7 @@ def osd(icon: str, text: str) -> None:
 
 
 def notify(body: str) -> None:
-    if shutil.which("notify-send"):
-        subprocess.run(["notify-send", "-a", "Wallpapers", "-i", "preferences-desktop-wallpaper", body], check=False)
+    run([str(Path.home() / ".local/bin/hyprdori-notify"), "wallpapers", body])
 
 
 # ---------------------------------------------------------------- debugging

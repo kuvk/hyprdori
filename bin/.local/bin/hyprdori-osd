@@ -12,5 +12,5 @@ set -uo pipefail
 
 icon=$1 text=${2:?text} ms=${3:-0}
 qs ipc call osd message "$icon" "$text" "$ms" >/dev/null 2>&1 && exit 0
-command -v notify-send >/dev/null && notify-send -a Hyprdori "$text"
+"$HOME/.local/bin/hyprdori-notify" osd "$text"
 exit 0

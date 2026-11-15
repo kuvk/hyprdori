@@ -63,7 +63,7 @@ Singleton {
     }
 
     // Shell glyphs for Hyprdori's own scripts, matching the bar and Control
-    // Center. Add a script here by its notify-send -a name.
+    // Center. Add a script here by its name in hyprdori-notify.
     readonly property var appGlyphs: ({
             "Theme": Icons.palette,
             "Wallpapers": Icons.image

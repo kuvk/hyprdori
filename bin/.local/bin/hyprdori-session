@@ -35,7 +35,7 @@ for _ in {1..25}; do
     sleep 0.2
 done
 if [[ -n $open ]]; then
-    notify-send -a Session -i system-shutdown "$failed" "Still open: $open. Close them, then try again." 2>/dev/null
+    "$HOME/.local/bin/hyprdori-notify" session "$failed" "Still open: $open. Close them, then try again." 2>/dev/null
     exit 1
 fi
 # and a moment more for the apps themselves to finish writing what they keep (2 seconds at most)

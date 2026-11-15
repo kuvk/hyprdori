@@ -170,7 +170,7 @@ if [[ -n $pid ]]; then
 fi
 
 command -v fastfetch >/dev/null || {
-    notify-send -a "System Information" "fastfetch is not installed"
+    "$HOME/.local/bin/hyprdori-notify" sysinfo "fastfetch is not installed"
     exit 1
 }
 

@@ -331,7 +331,7 @@ def notify_switch(summary: str) -> None:
         notify(summary)
         return
     ask = (
-        'a=$(notify-send -a Theme -i preferences-desktop-theme -c x-hyprdori.hint -A update=Update "$1" "$2"); '
+        'a=$("$HOME/.local/bin/hyprdori-notify" theme -c x-hyprdori.hint -A update=Update "$1" "$2"); '
         '[ "$a" = update ] && exec "$0" --window'
     )
     body = "Click Update for the bootloader and Plymouth to follow the new theme."

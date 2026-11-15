@@ -28,7 +28,7 @@ scripts=$(dirname "$self")
 hyprdori=$(cd "$scripts/../../.." && pwd)
 stamp=/var/lib/hyprdori/boot-theme
 
-note() { printf '%s\n' "$1"; command -v notify-send >/dev/null && [[ ! -t 1 ]] && notify-send -a "Boot screens" "$1" 2>/dev/null; true; }
+note() { printf '%s\n' "$1"; [[ ! -t 1 ]] && "$HOME/.local/bin/hyprdori-notify" boot "$1" 2>/dev/null; true; }
 
 # Checksum of everything the two installers draw from (run as the user whose theme it is)
 fingerprint() {

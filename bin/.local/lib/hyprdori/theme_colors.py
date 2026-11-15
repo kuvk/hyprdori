@@ -64,11 +64,7 @@ HEX_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 
 def notify(body: str) -> None:
-    if shutil.which("notify-send"):
-        subprocess.run(
-            ["notify-send", "-a", "Theme", "-i", "preferences-desktop-theme", body],
-            check=False,
-        )
+    subprocess.run([str(HOME / ".local/bin/hyprdori-notify"), "theme", body], check=False)
 
 
 def run_quiet(cmd: list[str]) -> None:

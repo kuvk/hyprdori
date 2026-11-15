@@ -26,7 +26,7 @@ launcher_state=${XDG_DATA_HOME:-$HOME/.local/share}/spotify-launcher/state.json
 
 note() {
     printf '%s\n' "$1"
-    [[ ! -t 1 ]] && command -v notify-send >/dev/null && notify-send -a Spotify "$1" "${2:-}" 2>/dev/null
+    [[ ! -t 1 ]] && "$HOME/.local/bin/hyprdori-notify" spotify "$1" "${2:-}" 2>/dev/null
     true
 }
 

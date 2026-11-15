@@ -43,6 +43,6 @@ done
 
 # The machine sleeps anyway: say so on the screen it wakes up to
 echo "hyprdori-sleep-lock: suspending without a secure lock (not locked within ${budget} ms)" >&2
-notify-send -u critical -a "Lock screen" "Slept without locking" \
+"$HOME/.local/bin/hyprdori-notify" lock -u critical "Slept without locking" \
     "Not locked within ${budget} ms." 2>/dev/null
 exit 1

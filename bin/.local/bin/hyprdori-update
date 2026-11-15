@@ -60,7 +60,7 @@ if [[ ${1:-} == --notify ]]; then
     ((flat)) && parts+=("$flat Flatpak")
     body=$(IFS=,; echo "${parts[*]}" | sed 's/,/, /g')
     gdbus wait --session --timeout 3600 org.freedesktop.Notifications >/dev/null 2>&1 || exit 0
-    action=$(notify-send -a "System update" -i system-software-update -A update=Update \
+    action=$("$bin/hyprdori-notify" update -A update=Update \
         "$total updates available" "$body. Update opens the update window.")
     [[ $action == update ]] && exec "$(readlink -f "$0")" --window
     exit 0
