@@ -18,18 +18,9 @@ set -uo pipefail
 pid=$1 what=${2:-this}
 here=$(dirname "$(readlink -f "$0")")
 
-# On battery: the machine's own battery discharging (a mouse's or keyboard's battery, scope
-# Device, doesn't count; plugged in, by any port, it isn't discharging)
-on_battery() {
-    local supply
-    for supply in /sys/class/power_supply/*; do
-        [[ $(cat "$supply/type" 2>/dev/null) == Battery && $(cat "$supply/scope" 2>/dev/null) != Device ]] || continue
-        [[ $(cat "$supply/status" 2>/dev/null) == Discharging ]] && return 0
-    done
-    return 1
-}
-
-if [[ -z ${HYPRDORI_AWAKE_ASKED:-} ]] && on_battery; then
+# On battery: the machine's own battery discharging (hyprdori-hw: a mouse's or keyboard's doesn't
+# count; plugged in, by any port, it isn't discharging)
+if [[ -z ${HYPRDORI_AWAKE_ASKED:-} ]] && "$here/hyprdori-hw" on-battery; then
     if { : </dev/tty; } 2>/dev/null; then
         "$here/hyprdori-present" confirm "On battery: $what can take a while and drain it. Go on anyway?" </dev/tty || exit 1
     else

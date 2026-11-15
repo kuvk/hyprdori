@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+# What this machine is, answered in one place. Each check answers by its exit status, so a
+# script asks `hyprdori-hw laptop && ...`; with several, all must hold. Nothing is cached: a
+# check is a few files read under /sys.
+#
+#   hyprdori-hw             everything found, a line each
+#   hyprdori-hw CHECK...    exit 0 when every CHECK holds:
+#                             laptop      a laptop's case (the DMI chassis type)
+#                             asus        a laptop made by ASUS (its code is tested on a ROG Strix G16)
+#                             vm          inside a virtual machine
+#                             nvidia intel amd   a GPU of that maker
+#                             hybrid      a laptop with an NVIDIA GPU next to another one
+#                             battery     has a battery of its own (a mouse's doesn't count)
+#                             on-battery  running on it (not plugged in)
+#                             btrfs       the root file system is btrfs
+#                             encrypted   the initramfs unlocks encrypted drives
+#   hyprdori-hw gpus        every GPU's PCI vendor id, a line each (0x10de NVIDIA, 0x8086 Intel,
+#                           0x1002 AMD)
+#   hyprdori-hw boot-gpu    the GPU the firmware's screen is on: its vendor id and driver
+#   hyprdori-hw firmware    the linux-firmware packages the loaded drivers draw from, and the
+#                           installed ones they don't, with sizes; nothing is changed
+
+# -h, --help: the comment above, then nothing else runs
+case ${1:-} in -h | --help) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; exit 0 ;; esac
+set -uo pipefail
+
+gpus() {
+    local dev
+    for dev in /sys/bus/pci/devices/*; do
+        [[ $(cat "$dev/class" 2>/dev/null) == 0x03* ]] && cat "$dev/vendor"
+    done
+    return 0
+}
+boot_gpu() {
+    local dev driver
+    for dev in /sys/bus/pci/devices/*; do
+        [[ $(cat "$dev/class" 2>/dev/null) == 0x03* && $(cat "$dev/boot_vga" 2>/dev/null) == 1 ]] || continue
+        driver=
+        [[ -e $dev/driver ]] && driver=$(basename "$(readlink "$dev/driver")")
+        echo "$(cat "$dev/vendor") $driver"
+        return 0
+    done
+    return 1
+}
+has_gpu() { gpus | grep -qx "$1"; }
+# the machine's own batteries: a mouse's or keyboard's (scope Device) doesn't count
+batteries() {
+    local supply
+    for supply in /sys/class/power_supply/*; do
+        [[ $(cat "$supply/type" 2>/dev/null) == Battery && $(cat "$supply/scope" 2>/dev/null) != Device ]] && echo "$supply"
+    done
+    return 0
+}
+
+check() {
+    case $1 in
+        laptop) [[ " 8 9 10 14 31 32 " == *" $(cat /sys/class/dmi/id/chassis_type 2>/dev/null || echo 0) "* ]] ;;
+        asus) check laptop && [[ $(cat /sys/class/dmi/id/sys_vendor 2>/dev/null) == ASUSTeK* ]] ;;
+        vm) systemd-detect-virt --vm --quiet 2>/dev/null ;;
+        nvidia) has_gpu 0x10de ;;
+        intel) has_gpu 0x8086 ;;
+        amd) has_gpu 0x1002 ;;
+        hybrid) check laptop && has_gpu 0x10de && (($(gpus | wc -l) >= 2)) ;;
+        battery) [[ -n $(batteries) ]] ;;
+        on-battery)
+            local supply
+            # plugged in, by any port, it isn't discharging
+            while read -r supply; do
+                [[ -n $supply && $(cat "$supply/status" 2>/dev/null) == Discharging ]] && return 0
+            done < <(batteries)
+            return 1
+            ;;
+        btrfs) [[ $(findmnt -no FSTYPE / 2>/dev/null) == btrfs ]] ;;
+        encrypted) grep -qE '^HOOKS=.*\b(sd-)?encrypt\b' /etc/mkinitcpio.conf 2>/dev/null ;;
+        *) echo "hyprdori-hw: no check $1 (hyprdori-hw -h lists them)" >&2; exit 2 ;;
+    esac
+}
+
+# The linux-firmware packages holding a file a loaded driver names, then the other installed ones
+firmware() {
+    local module file ext needed=() other=() package size
+    mapfile -t needed < <(
+        for module in $(lsmod | awk 'NR > 1 { print $1 }'); do modinfo -F firmware "$module" 2>/dev/null; done | sort -u |
+            while read -r file; do
+                for ext in "" .zst .xz; do [[ -e /usr/lib/firmware/$file$ext ]] && echo "/usr/lib/firmware/$file$ext"; done
+            done | xargs -r pacman -Qoq 2>/dev/null | grep '^linux-firmware-' | sort -u)
+    mapfile -t other < <(comm -23 <(pacman -Qq | grep '^linux-firmware-' | grep -vx linux-firmware-whence | sort) <(printf '%s\n' "${needed[@]}"))
+    sizes() {
+        for package in "$@"; do
+            size=$(LC_ALL=C pacman -Qi "$package" | awk -F': ' '/^Installed Size/ { print $2 }')
+            printf '  %-26s %s\n' "$package" "$size"
+        done
+    }
+    echo "The loaded drivers draw from:"
+    sizes "${needed[@]}"
+    echo "Installed, and not used by them:"
+    ((${#other[@]})) && sizes "${other[@]}" || echo "  none"
+    echo "A device plugged in later (a Wi-Fi stick, another GPU) may need one of those."
+}
+
+case ${1:-} in
+    "")
+        for name in laptop asus vm hybrid battery on-battery btrfs encrypted; do
+            check "$name" && answer=yes || answer=no
+            printf '%-12s %s\n' "$name" "$answer"
+        done
+        printf '%-12s %s\n' gpus "$(gpus | tr '\n' ' ')"
+        printf '%-12s %s\n' boot-gpu "$(boot_gpu || echo none)"
+        ;;
+    gpus) gpus ;;
+    boot-gpu) boot_gpu ;;
+    firmware) firmware ;;
+    *)
+        for name in "$@"; do
+            check "$name" || exit 1
+        done
+        ;;
+esac

@@ -169,26 +169,19 @@ if ! $dry; then
 fi
 
 # --- Hardware -----------------------------------------------------------------------------------
+# hyprdori-hw answers what the machine is (from the repo: nothing is linked yet)
+hw=$hyprdori/bin/.local/bin/hyprdori-hw
 gpus=() boot_gpu= boot_driver=
-for dev in /sys/bus/pci/devices/*; do
-    [[ $(cat "$dev/class") == 0x03* ]] || continue
-    vendor=$(cat "$dev/vendor")
-    gpus+=("$vendor")
-    if [[ $(cat "$dev/boot_vga" 2>/dev/null) == 1 ]]; then
-        boot_gpu=$vendor
-        [[ -e $dev/driver ]] && boot_driver=$(basename "$(readlink "$dev/driver")")
-    fi
-done
+mapfile -t gpus < <("$hw" gpus)
+read -r boot_gpu boot_driver < <("$hw" boot-gpu) || true
 has_gpu() { [[ " ${gpus[*]} " == *" $1 "* ]]; }
-vendor=$(cat /sys/class/dmi/id/sys_vendor 2>/dev/null || true)
-chassis=$(cat /sys/class/dmi/id/chassis_type 2>/dev/null || echo 0)
 laptop=false asus_laptop=false
-[[ " 8 9 10 14 31 32 " == *" $chassis "* ]] && laptop=true
-$laptop && [[ $vendor == ASUSTeK* ]] && asus_laptop=true
+"$hw" laptop && laptop=true
+"$hw" asus && asus_laptop=true
 # Inside a virtual machine (a test install): its GPU's Vulkan and the guest agent, and no for
 # the questions about real hardware and running VMs
 guest=false
-systemd-detect-virt --vm --quiet 2>/dev/null && guest=true
+"$hw" vm && guest=true
 
 groups=(core)
 $guest && groups+=(guest)
@@ -196,7 +189,7 @@ has_gpu 0x10de && groups+=(nvidia)
 has_gpu 0x8086 && groups+=(intel)
 has_gpu 0x1002 && groups+=(amd)
 # NVIDIA next to another GPU in a laptop: prime-run
-$laptop && has_gpu 0x10de && ((${#gpus[@]} >= 2)) && groups+=(hybrid)
+"$hw" hybrid && groups+=(hybrid)
 # Both asked on every machine, as not every laptop or desktop needs them; what the hardware
 # suggests is the default
 if ask "ASUS laptop: the g14 repo, asusctl and ROG Control Center (packages/laptop.txt)?" "$($asus_laptop && echo y || echo n)"; then
@@ -220,14 +213,14 @@ ask "Browsers: should their tabs, address bar and menus follow the font everythi
 browser_font=false
 # A btrfs root laid out as the install guide's (@ and @snapshots): snapshots, also in the boot menu
 snapshots=false
-if [[ $(findmnt -no FSTYPE /) == btrfs ]] &&
+if "$hw" btrfs &&
 ask "Snapshots: before and after every update, bootable from the boot menu (packages/snapshots.txt)?" y; then
     snapshots=true
     groups+=(snapshots)
 fi
 # With encrypted drives the disk password already guards the machine, so autologin is the default
 encrypted=n
-grep -qE '^HOOKS=.*\b(sd-)?encrypt\b' /etc/mkinitcpio.conf 2>/dev/null && encrypted=y
+"$hw" encrypted && encrypted=y
 autologin=--no-autologin
 if ask "Log in automatically, without the login screen (autologin)?" "$encrypted"; then
     autologin=--autologin
