@@ -166,11 +166,12 @@ while IFS= read -r title; do
     [[ -z $title ]] || git grep -q -E "^    title: \"$title\"\$" -- 'quickshell/*.qml' ||
         fail "shell window title: no window is titled \"$title\" (rules.lua, Hypr.qml)"
 done <<<"$titles_rule"
-# the titles the bar shows an icon for are windows' titles too (the shell's, or a script's kitty)
+# the titles the bar shows an icon for are windows' titles too (the shell's, a script's kitty,
+# or a hyprdori-present window)
 while IFS= read -r title; do
-    [[ -z $title ]] || git grep -q -E "title: \"$title\"|--title \"$title\"" -- 'quickshell/*.qml' 'bin/*' ||
+    [[ -z $title ]] || git grep -q -E "title: \"$title\"|--title \"$title\"|hyprdori-window\"?,? \"$title\"" -- 'quickshell/*.qml' 'bin/*' ||
         fail "shell window title: no window is titled \"$title\" (WindowTitle.qml shellIcons)"
-done < <(grep -o 'shellIcons: ({[^}]*})' quickshell/.config/quickshell/modules/bar/WindowTitle.qml | grep -o '"[^"]*":' | tr -d '":')
+done < <(sed -n '/shellIcons: ({/,/})/p' quickshell/.config/quickshell/modules/bar/WindowTitle.qml | grep -o '"[^"]*":' | tr -d '":')
 
 # The shell names colors as the themes do
 while IFS= read -r line; do

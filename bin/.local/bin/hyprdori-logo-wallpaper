@@ -273,7 +273,7 @@ def in_window() -> int:
 
 def main(argv: list[str]) -> int:
     if argv[:1] == ["--window"]:
-        os.execv(str(PRESENT), [str(PRESENT), "window", "hyprdori-window", "Wallpaper", str(Path(__file__).resolve()), "--in-window"])
+        os.execv(str(PRESENT), [str(PRESENT), "window", "hyprdori-window", "Wallpaper generator", str(Path(__file__).resolve()), "--in-window"])
     if argv[:1] == ["--in-window"]:
         return in_window()
     parser = argparse.ArgumentParser(add_help=False)
