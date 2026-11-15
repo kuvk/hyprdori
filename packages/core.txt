@@ -21,7 +21,7 @@ vulkan-tools
 limine
 efibootmgr
 plymouth
-sddm-git                 # AUR
+sddm
 
 # Hyprland
 hyprland
