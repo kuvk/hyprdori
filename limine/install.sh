@@ -51,6 +51,7 @@ else
 fi
 
 # The current theme's colors, or Catppuccin's before hyprdori-theme-set has run
+# shellcheck disable=SC2034  # every color colors.sh has, used below or not
 background="#1e1e2e" selection="#45475a" muted="#585b70" foreground="#cdd6f4"
 light_foreground="#bac2de" bright_foreground="#cdd6f4" accent="#89b4fa" magenta="#cba6f7"
 red="#f38ba8" green="#a6e3a1" yellow="#fab387" blue="#89b4fa" cyan="#94e2d5"

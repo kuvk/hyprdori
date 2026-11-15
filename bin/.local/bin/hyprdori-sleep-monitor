@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Locks the screen before every suspend (the power menu, the idle timer, the lid): holds a
 # logind delay inhibitor, and when logind announces a sleep (PrepareForSleep), runs
 # hyprdori-sleep-lock and lets go so the sleep goes ahead. Then takes a new inhibitor for the next
@@ -37,6 +37,7 @@ coproc events {
     exec dbus-monitor --system \
         "type='signal',sender='org.freedesktop.login1',interface='org.freedesktop.login1.Manager',member='PrepareForSleep'"
 }
+# shellcheck disable=SC2154  # coproc sets events_PID
 trap 'kill "$events_PID" 2>/dev/null' EXIT
 
 while hyprland_alive; do

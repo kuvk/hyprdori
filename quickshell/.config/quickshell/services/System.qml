@@ -15,7 +15,7 @@ Singleton {
     property bool nightlight: false
     // Holds idle off: no idle lock or sleep (services/Idle.qml)
     property bool stayAwake: false
-    // Work-Game: "normal", "work" or "game" (hyprdori-gamemode reports it over IPC)
+    // Work-Game: "normal", "work" or "game" (hyprdori-mode reports it over IPC)
     property string mode: "normal"
     readonly property bool gamemode: mode !== "normal"
     // For the bar's tooltip and the Control Center tile
@@ -160,7 +160,7 @@ Singleton {
 
     // normal, Work, Game, normal; the script reports back through `qs ipc call theme mode`
     function cycleMode(): void {
-        Quickshell.execDetached([scripts + "hyprdori-gamemode", "cycle"]);
+        Quickshell.execDetached([scripts + "hyprdori-mode", "cycle"]);
     }
 
     function setBrightness(value: real): void {
@@ -219,7 +219,7 @@ Singleton {
     Process {
         id: statusProc
 
-        command: ["sh", "-c", "pgrep -x hyprsunset >/dev/null && echo nightlight; test -e /tmp/hypr-gamemode && echo \"mode:$(cat /tmp/hypr-gamemode)\"; true"]
+        command: ["sh", "-c", "pgrep -x hyprsunset >/dev/null && echo nightlight; f=${XDG_RUNTIME_DIR:-/tmp}/hyprdori-mode; test -e \"$f\" && echo \"mode:$(cat \"$f\")\"; true"]
         stdout: StdioCollector {
             onStreamFinished: {
                 root.nightlight = text.includes("nightlight");

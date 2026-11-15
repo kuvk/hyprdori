@@ -71,6 +71,7 @@ gtk3
 python
 pacman-contrib           # paccache, pacdiff (hyprdori-maintenance, hyprdori-update)
 gum                      # the update windows' boxes, buttons and spinner (hyprdori-present)
+shellcheck               # hyprdori-check reads the scripts with it
 reflector                # ranks mirrors; enable reflector.timer
 flatpak
 mpvpaper                 # AUR, video wallpapers
@@ -102,7 +103,6 @@ direnv
 tmux
 herdr-bin                # AUR, tmux for coding agents (herdr/: its config)
 btop
-htop                     # on battery: btop wakes the dGPU
 cava
 fastfetch
 lazygit

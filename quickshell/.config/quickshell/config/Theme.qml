@@ -22,7 +22,7 @@ Singleton {
     property string iconsDir: ""
     // the theme's own background image (hyprdori-theme-set): the wallpaper and lock screen while they follow the theme
     property string backgroundImage: ""
-    // Set by hyprdori-gamemode over IPC: opaque surfaces, square corners, no animations
+    // Set by hyprdori-mode over IPC: opaque surfaces, square corners, no animations
     property bool gamemode: false
 
     // The theme's colors
@@ -197,7 +197,7 @@ Singleton {
     }
 
     FileView {
-        path: "/tmp/hypr-gamemode"
+        path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/hyprdori-mode"
         // missing simply means gamemode is off
         printErrors: false
         onLoaded: root.gamemode = true

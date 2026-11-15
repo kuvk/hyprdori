@@ -1,0 +1,15 @@
+# What shellcheck leaves alone in Hyprdori's scripts (hyprdori-check runs it): ways of writing
+# that are meant, not mistakes.
+#   SC1007  a= b= on one line sets both empty
+#   SC1010  "done" as an argument (hyprdori-present done)
+#   SC2001  sed where ${var//a/b} would do
+#   SC2012  ls to list a folder's files by time
+#   SC2013  a for loop over grep's words
+#   SC2015  a && b || c, where b doesn't fail
+#   SC2016  $ kept as it is inside single quotes (awk, sed, bash -c)
+#   SC2017  division before multiplication, to round down to a whole cell
+#   SC2054  commas inside one array element (kernel options)
+#   SC2100  a word with a dash in it after = isn't arithmetic
+#   SC2174  mkdir -p -m for the last folder only
+#   SC2206  numbers from $(( )) unquoted in an array
+disable=SC1007,SC1010,SC2001,SC2012,SC2013,SC2015,SC2016,SC2017,SC2054,SC2100,SC2174,SC2206

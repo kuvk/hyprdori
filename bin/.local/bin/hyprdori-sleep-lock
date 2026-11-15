@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Lock before a suspend and wait until the session lock is secure (hyprdori-sleep-monitor runs this
 # when logind announces a sleep, holding it back with a delay inhibitor meanwhile). After
 # Omarchy's omarchy-system-sleep-lock (github.com/basecamp/omarchy, MIT).

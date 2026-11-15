@@ -5,22 +5,21 @@
 #   Game  the same, plus a plain US keyboard (Alt and Super not swapped, as input.lua
 #         does, and no layout switching) so games get the printed keys, and Stay Awake
 #
-#   hyprdori-gamemode work     Work mode, or back to normal if already in it (SUPER+G)
-#   hyprdori-gamemode game     Game mode, or back to normal if already in it (SUPER+CTRL+G)
-#   hyprdori-gamemode cycle    normal, Work, Game, normal (the bar and Control Center)
-#   hyprdori-gamemode normal   leave either mode
-#   hyprdori-gamemode restyle  the mode's look again (the shell runs it after Hyprland
+#   hyprdori-mode work     Work mode, or back to normal if already in it (SUPER+G)
+#   hyprdori-mode game     Game mode, or back to normal if already in it (SUPER+CTRL+G)
+#   hyprdori-mode cycle    normal, Work, Game, normal (the bar and Control Center)
+#   hyprdori-mode normal   leave either mode
+#   hyprdori-mode restyle  the mode's look again (the shell runs it after Hyprland
 #                             reloads its config, which brings back the normal look)
 #
-# /tmp/hypr-gamemode holds the mode; it exists in both, as other scripts only check that.
+# $XDG_RUNTIME_DIR/hyprdori-mode holds the mode (gone at logout, as the look is); it exists in
+# both, as other scripts only check that.
 
 # -h, --help: the comment above, then nothing else runs
 case ${1:-} in -h | --help) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; exit 0 ;; esac
 set -euo pipefail
 
-FLAG="/tmp/hypr-gamemode"
-
-HYPR_MON="$HOME/.local/bin/hyprdori-monitors"
+FLAG="${XDG_RUNTIME_DIR:-/tmp}/hyprdori-mode"
 
 # Keyboard: the usual layouts and options, read from input.lua, and Work-Game's
 INPUT="$HOME/.config/hypr/configs/input.lua"
@@ -137,7 +136,7 @@ case ${1:-work} in
     normal) set_mode normal ;;
     restyle) [[ $mode == normal ]] || style_on ;;
     *)
-        echo "usage: hyprdori-gamemode [work|game|cycle|normal|restyle]" >&2
+        echo "usage: hyprdori-mode [work|game|cycle|normal|restyle]" >&2
         exit 1
         ;;
 esac

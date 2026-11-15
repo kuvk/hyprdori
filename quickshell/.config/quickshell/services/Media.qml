@@ -70,11 +70,13 @@ Singleton {
         return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
     }
 
-    // MPRIS doesn't push position updates; poke them while something plays
+    // MPRIS doesn't push position updates; poke them while something plays and the position
+    // shows (MediaCard: the media dropdown and the Control Center), at once when one opens
     Timer {
-        running: root.active?.isPlaying ?? false
+        running: (root.active?.isPlaying ?? false) && (Panels.dropdown === "media" || Panels.controlCenter)
         interval: 1000
         repeat: true
+        triggeredOnStart: true
         onTriggered: root.active.positionChanged()
     }
 }

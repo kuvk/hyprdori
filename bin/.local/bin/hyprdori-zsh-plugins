@@ -1,4 +1,4 @@
-#!/bin/python3
+#!/usr/bin/env python3
 """zsh's plugins, cloned into ~/.local/share/zsh-plugins (where .zshrc loads them from): vi mode,
 syntax highlighting, completions, autosuggestions and history substring search. One already
 there is left as it is. install.sh runs it.

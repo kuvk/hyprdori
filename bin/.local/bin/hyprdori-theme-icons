@@ -15,8 +15,6 @@ from __future__ import annotations
 
 import re
 import sys
-import importlib.machinery
-import importlib.util
 import tomllib
 from pathlib import Path
 
@@ -42,12 +40,11 @@ def themes() -> list[str]:
 
 
 def palette(name: str) -> dict:
-    """The theme's colors as hyprdori-theme-set works them out."""
-    loader = importlib.machinery.SourceFileLoader("theme_set", str(Path.home() / ".local/bin/hyprdori-theme-set"))
-    module = importlib.util.module_from_spec(importlib.util.spec_from_loader("theme_set", loader))
-    loader.exec_module(module)
+    """The theme's colors as hyprdori-theme-set works them out (its parts are in ../lib/hyprdori)."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib/hyprdori"))
+    import theme_colors
     with (THEMES_DIR / name / "colors.toml").open("rb") as f:
-        return module.palette(tomllib.load(f))[0]
+        return theme_colors.palette(tomllib.load(f))[0]
 
 
 def generate(name: str) -> None:

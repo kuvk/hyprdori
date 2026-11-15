@@ -15,11 +15,23 @@
 # the theme, snapshots on a btrfs root (snapper, limine-snapper-sync), then boot:
 # initramfs and kernel options, Plymouth, Limine. The login screen (SDDM) comes with the theme, or autologin if chosen (the
 # default with encrypted drives).
+#
+#   install.sh --dry-run   what an install would do on this machine, and nothing done: the same
+#                          questions (their defaults, when not run in a terminal), then the
+#                          hardware found, the packages not installed yet, the files in the way of
+#                          the links, the services and what the boot step would find. No password.
 set -euo pipefail
+dry=false
+[[ ${1:-} == --dry-run ]] && dry=true
 
 hyprdori=$(dirname "$(readlink -f "$0")")
 # Not stowed; hyprdori-update's Links step has the same list (hyprdori-check compares them)
 not_stowed=(limine migrations packages plymouth sddm)
+packages=()
+for dir in "$hyprdori"/*/; do
+    name=$(basename "$dir")
+    [[ " ${not_stowed[*]} " == *" $name "* ]] || packages+=("$name")
+done
 
 step() { printf '\n\e[1;34m==> %s\e[0m\n' "$1"; }
 note() { printf '\e[33m%s\e[0m\n' "$1"; }
@@ -27,6 +39,11 @@ note() { printf '\e[33m%s\e[0m\n' "$1"; }
 ask() {
     local answer hint="[y/N]"
     [[ $2 == y ]] && hint="[Y/n]"
+    if $dry && [[ ! -t 0 ]]; then
+        echo "$1 $hint $2"
+        [[ $2 == y ]]
+        return
+    fi
     read -r -p "$1 $hint " answer </dev/tty
     [[ ${answer:-$2} =~ ^[yY] ]]
 }
@@ -53,6 +70,91 @@ source_of() {
     fi
     return 0
 }
+# Files where a link should go, which aren't links into Hyprdori already: their paths under the
+# home folder, each ended by a NUL
+in_the_way() {
+    local name file rel target
+    for name in "${packages[@]}"; do
+        while IFS= read -r -d '' file; do
+            rel=${file#"$hyprdori/$name/"}
+            target="$HOME/$rel"
+            [[ -e $target || -L $target ]] || continue
+            [[ $(readlink -f "$target") == "$file" ]] && continue
+            printf '%s\0' "$rel"
+        done < <(find "$hyprdori/$name" \( -type f -o -type l \) -print0)
+    done
+}
+# Every package of the chosen lists and the extra ones, once each
+wanted_packages() {
+    {
+        for group in "${groups[@]}"; do list "$group"; done
+        ((${#user_native[@]})) && printf '%s\n' "${user_native[@]}"
+    } | sort -u
+}
+# The system services enabled for the chosen lists
+services_for() {
+    local services=(NetworkManager bluetooth power-profiles-daemon sddm fstrim.timer)
+    if [[ " ${groups[*]} " == *" nvidia "* ]]; then
+        services+=(nvidia-suspend nvidia-hibernate nvidia-resume)
+        $laptop && services+=(nvidia-powerd)
+    fi
+    [[ " ${groups[*]} " == *" desktop "* ]] && services+=(coolercontrold)
+    $guest && services+=(qemu-guest-agent)
+    [[ " ${groups[*]} " == *" vm "* ]] && services+=(libvirtd docker.socket)
+    printf '%s\n' "${services[@]}"
+}
+# --dry-run: what the steps below would find and do, from what was answered; nothing is changed
+dry_report() {
+    local names=() missing=() rel
+    step "Hardware"
+    echo "Graphics: ${gpus[*]:-none found}; the boot screen's: ${boot_gpu:-unknown}${boot_driver:+ ($boot_driver)}"
+    echo "Laptop: $laptop; ASUS laptop: $asus_laptop; virtual machine: $guest"
+    echo "Root: $(findmnt -no FSTYPE /); encrypted drives in the initramfs: $encrypted"
+    step "pacman.conf"
+    grep -q '^#\[multilib\]$' /etc/pacman.conf && echo "multilib would be turned on" || echo "multilib is on already"
+    if [[ " ${groups[*]} " == *" laptop "* ]]; then
+        grep -q '^\[g14\]' /etc/pacman.conf && echo "The g14 repo is there already" || echo "The g14 repo and its keys would be added"
+    fi
+    step "Mirrors"
+    [[ -f /etc/pacman.d/mirrorlist.bak ]] && echo "Ranked before; left as they are" || echo "Would be ranked with reflector"
+    step "Links"
+    echo "Would link: ${packages[*]}"
+    while IFS= read -r -d '' rel; do names+=("$rel"); done < <(in_the_way)
+    if ((${#names[@]})); then
+        echo "${#names[@]} file(s) in the way would move to ~/.hyprdori-backup:"
+        printf '  ~/%s\n' "${names[@]}"
+    else
+        echo "Nothing in the way."
+    fi
+    step "Packages"
+    command -v paru >/dev/null || echo "paru would be built from the AUR"
+    mapfile -t names < <(wanted_packages)
+    mapfile -t missing < <(comm -23 <(printf '%s\n' "${names[@]}") <(pacman -Qq | sort -u))
+    echo "${#names[@]} in the chosen lists, ${#missing[@]} not installed${missing:+:}"
+    ((${#missing[@]})) && printf '%s\n' "${missing[@]}" | column -c "$(tput cols 2>/dev/null || echo 100)" | sed 's/^/  /'
+    if $flatpak || ((${#user_flatpak[@]})); then
+        step "Flatpak"
+        names=()
+        $flatpak && mapfile -t names < <(list flatpak)
+        names+=("${user_flatpak[@]}")
+        echo "Would install from Flathub: ${names[*]}"
+    fi
+    step "Services"
+    mapfile -t names < <(services_for)
+    echo "Would enable: ${names[*]}, and the weekly update check"
+    step "Snapshots"
+    $snapshots && echo "snapper for /, the newest 5 update snapshots kept, in the boot menu" || echo "None."
+    step "Boot"
+    if ! mountpoint -q /efi; then
+        echo "The ESP isn't mounted at /efi: Plymouth and Limine would be skipped."
+    elif ! grep -qE '^HOOKS=\(.*\bsystemd\b' /etc/mkinitcpio.conf; then
+        echo "The initramfs doesn't use the systemd hook: Plymouth and Limine would be skipped."
+    else
+        echo "The initramfs, the kernel options, Plymouth and Limine would be set up."
+    fi
+    echo
+    echo "Nothing was changed."
+}
 
 # --- Checks -------------------------------------------------------------------------------------
 ((EUID != 0)) || { echo "Run this as yourself, not root: it asks for sudo when needed." >&2; exit 1; }
@@ -60,9 +162,11 @@ source_of() {
 curl -fsI --max-time 10 https://archlinux.org >/dev/null || { echo "No internet connection." >&2; exit 1; }
 # awake while it runs (on battery it asks first), then the password once: sudo keeps it until
 # the install ends, however long the downloads take
-"$hyprdori/bin/.local/bin/hyprdori-awake" $$ "the install" || { echo "Nothing installed."; exit 0; }
-export HYPRDORI_AWAKE_ASKED=1
-"$hyprdori/bin/.local/bin/hyprdori-sudo-hold" $$ || { echo "No password, nothing installed." >&2; exit 1; }
+if ! $dry; then
+    "$hyprdori/bin/.local/bin/hyprdori-awake" $$ "the install" || { echo "Nothing installed."; exit 0; }
+    export HYPRDORI_AWAKE_ASKED=1
+    "$hyprdori/bin/.local/bin/hyprdori-sudo-hold" $$ || { echo "No password, nothing installed." >&2; exit 1; }
+fi
 
 # --- Hardware -----------------------------------------------------------------------------------
 gpus=() boot_gpu= boot_driver=
@@ -140,7 +244,7 @@ user_native=() user_flatpak=()
 # The list is this machine's, outside the repo; missing, it's made with these notes and nothing
 # to install, to fill in for a later run
 user_pkg_file=${XDG_CONFIG_HOME:-$HOME/.config}/hyprdori/user_pkg.txt
-if [[ ! -e $user_pkg_file ]]; then
+if [[ ! -e $user_pkg_file ]] && ! $dry; then
     mkdir -p "${user_pkg_file%/*}"
     cat >"$user_pkg_file" <<'EOF'
 # Extra packages that Hyprdori's install.sh offers to install with its own lists, on this machine
@@ -155,7 +259,7 @@ if [[ ! -e $user_pkg_file ]]; then
 EOF
 fi
 user_pkgs=()
-mapfile -t user_pkgs < <(sed 's/#.*//; s/[[:space:]]//g; /^$/d' "$user_pkg_file")
+[[ -e $user_pkg_file ]] && mapfile -t user_pkgs < <(sed 's/#.*//; s/[[:space:]]//g; /^$/d' "$user_pkg_file")
 if ((${#user_pkgs[@]})) && ask "Extra packages (~/.config/hyprdori/user_pkg.txt: ${#user_pkgs[@]})?" y; then
     echo "Looking them up in the repos, the AUR and Flathub..."
     chosen=("${groups[@]}")
@@ -186,7 +290,12 @@ if ((${#user_pkgs[@]})) && ask "Extra packages (~/.config/hyprdori/user_pkg.txt:
 fi
 
 echo
+# shellcheck disable=SC1102  # $(( here opens a command, (( a test )) && echo, not arithmetic
 echo "Package lists: ${groups[*]}$($flatpak && echo ", flatpak")$(((${#user_native[@]} + ${#user_flatpak[@]})) && echo ", extra ($((${#user_native[@]} + ${#user_flatpak[@]})))")$([[ $autologin == --autologin ]] && echo "; autologin")"
+if $dry; then
+    dry_report
+    exit 0
+fi
 ask "Continue?" y || exit 0
 
 # --- pacman.conf ----------------------------------------------------------------------------------
@@ -227,30 +336,21 @@ sudo systemctl enable --now reflector.timer
 step "Links"
 sudo pacman -Syu --needed --noconfirm base-devel git stow
 backup="$HOME/.hyprdori-backup/$(date +%F_%H-%M-%S)"
-packages=()
-for dir in "$hyprdori"/*/; do
-    name=$(basename "$dir")
-    [[ " ${not_stowed[*]} " == *" $name "* ]] || packages+=("$name")
-done
-# Files where a link should go, which aren't links into Hyprdori already, move aside
+# Files in the way of the links move aside
 moved=0
-for name in "${packages[@]}"; do
-    while IFS= read -r -d '' file; do
-        rel=${file#"$hyprdori/$name/"}
-        target="$HOME/$rel"
-        [[ -e $target || -L $target ]] || continue
-        [[ $(readlink -f "$target") == "$file" ]] && continue
-        mkdir -p "$backup/$(dirname "$rel")"
-        mv "$target" "$backup/$rel"
-        moved=$((moved + 1))
-    done < <(find "$hyprdori/$name" \( -type f -o -type l \) -print0)
-done
+while IFS= read -r -d '' rel; do
+    [[ -e $HOME/$rel || -L $HOME/$rel ]] || continue
+    mkdir -p "$backup/$(dirname "$rel")"
+    mv "$HOME/$rel" "$backup/$rel"
+    moved=$((moved + 1))
+done < <(in_the_way)
 ((moved)) && note "Moved $moved file(s) that were in the way to $backup"
 # Folders apps write into themselves made real first, so stow links the files in them rather
 # than the whole folder into the repo: systemd keeps its timers' state next to the user units,
-# hyprdori-webapp writes web apps' entries, herdr its sessions, plugins and logs. On a fresh
-# install they don't exist yet; existing ones are left as they are
-mkdir -p "$HOME/.local/share/systemd/user" "$HOME/.local/share/applications" "$HOME/.config/herdr"
+# hyprdori-webapp writes web apps' entries, herdr its sessions, plugins and logs, and
+# ~/.local/lib is where pip and others put their own (Hyprdori's is lib/hyprdori, the commands'
+# shared parts). On a fresh install they don't exist yet; existing ones are left as they are
+mkdir -p "$HOME/.local/share/systemd/user" "$HOME/.local/share/applications" "$HOME/.config/herdr" "$HOME/.local/lib"
 stow -d "$hyprdori" -t "$HOME" --restow "${packages[@]}"
 echo "Linked: ${packages[*]}"
 # A fresh install has nothing to migrate: hyprdori-update runs only migrations added later
@@ -265,10 +365,7 @@ if ! command -v paru >/dev/null; then
     (cd "$build/paru" && makepkg -si --needed --noconfirm)
     rm -rf "$build"
 fi
-mapfile -t wanted < <({
-    for group in "${groups[@]}"; do list "$group"; done
-    ((${#user_native[@]})) && printf '%s\n' "${user_native[@]}"
-} | sort -u)
+mapfile -t wanted < <(wanted_packages)
 # paru installs repo and AUR packages alike, and asks once. When that fails (an AUR package
 # that doesn't build), the rest go one at a time and the failures are listed: the install goes on
 if ! paru -Syu --needed "${wanted[@]}"; then
@@ -295,15 +392,9 @@ fi
 
 # --- Services, shell, theme -------------------------------------------------------------------------------
 step "Services"
-services=(NetworkManager bluetooth power-profiles-daemon sddm fstrim.timer)
-if [[ " ${groups[*]} " == *" nvidia "* ]]; then
-    services+=(nvidia-suspend nvidia-hibernate nvidia-resume)
-    $laptop && services+=(nvidia-powerd)
-fi
-[[ " ${groups[*]} " == *" desktop "* ]] && services+=(coolercontrold)
-$guest && services+=(qemu-guest-agent)
+mapfile -t services < <(services_for)
 vm=false
-[[ " ${groups[*]} " == *" vm "* ]] && vm=true && services+=(libvirtd docker.socket)
+[[ " ${groups[*]} " == *" vm "* ]] && vm=true
 for unit in "${services[@]}"; do
     if sudo systemctl enable "$unit" &>/dev/null; then echo "Enabled $unit"; else note "Couldn't enable $unit"; fi
 done

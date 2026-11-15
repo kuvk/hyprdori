@@ -21,7 +21,7 @@ local sysinfo = "~/.local/bin/hyprdori-sysinfo"
 local update = "~/.local/bin/hyprdori-update --window"
 local music = "kitty --class cliamp -e cliamp"
 local email = "thunderbird"
-local gamemode = "~/.local/bin/hyprdori-gamemode"
+local gamemode = "~/.local/bin/hyprdori-mode"
 local nightlight = "~/.local/bin/hyprdori-nightlight"
 local singleWindow = "~/.local/bin/hyprdori-single-window"
 

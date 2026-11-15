@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
-# Checks Hyprdori before a commit: every script parses, and no old names are left.
-# Prints what's wrong and exits 1, or says all is well. Takes a few seconds; nothing runs
-# in the background.
+# Checks Hyprdori before a commit: every script and the shell's files parse, shellcheck finds
+# nothing in the scripts, every theme renders, values kept in more than one place agree, and no
+# old names are left. Prints what's wrong and exits 1, or says all is well. Takes about a
+# second; writes nothing, and nothing runs in the background.
 #
 #   hyprdori-check
+#
+# As git's pre-commit hook (once per clone; hooks aren't part of the repo):
+#   ln -s ../../bin/.local/bin/hyprdori-check .git/hooks/pre-commit
 
 # -h, --help: the comment above, then nothing else runs
 case ${1:-} in -h | --help) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; exit 0 ;; esac
@@ -25,59 +29,148 @@ stow_list() { grep -o '^not_stowed=([^)]*)' "$1"; }
 [[ $(stow_list install.sh) == "$(stow_list bin/.local/bin/hyprdori-update)" ]] ||
     fail "not_stowed differs between install.sh and bin/.local/bin/hyprdori-update"
 
-# Files parse: shell, Python, Lua, TOML and JSON, by their first line or extension
+# Files by kind, from their first line or extension
+shell=() python=() lua=() data=() qml=()
 for file in "${tracked[@]}"; do
     [[ -f $file ]] || continue
-    first=$(head -c 64 "$file" 2>/dev/null | tr -d '\0' | head -n1)
-    case "$file:$first" in
-        *.sh:* | *:'#!/usr/bin/env bash'* | *:'#!/bin/bash'* | *:'#!/bin/sh'*)
-            bash -n "$file" 2>/dev/null || fail "shell syntax: $file" ;;
-        *.py:* | *:'#!/usr/bin/env python3'*)
-            python3 -c 'import ast, sys; ast.parse(open(sys.argv[1]).read())' "$file" 2>/dev/null || fail "Python syntax: $file" ;;
-        *.lua:*)
-            luac -p "$file" 2>/dev/null || [[ $file == *.tpl ]] || fail "Lua syntax: $file" ;;
-        *.toml:*)
-            python3 -c 'import sys, tomllib; tomllib.load(open(sys.argv[1], "rb"))' "$file" 2>/dev/null || fail "TOML syntax: $file" ;;
-        *.json:*)
-            python3 -c 'import json, sys; json.load(open(sys.argv[1]))' "$file" 2>/dev/null || fail "JSON syntax: $file" ;;
+    first=
+    case $file in
+        *.png | *.jpg | *.jpeg | *.webp | *.svg | *.ttf | *.otf | *.ico) continue ;;
+        *.toml | *.json) data+=("$file"); continue ;;
+        *.qml) qml+=("$file"); continue ;;
+        *.lua) lua+=("$file"); continue ;;
+        *.sh) shell+=("$file"); continue ;;
+        *.py) python+=("$file"); continue ;;
+    esac
+    IFS= read -r first <"$file" 2>/dev/null
+    case $first in
+        '#!/usr/bin/env bash'* | '#!/bin/sh'*) shell+=("$file") ;;
+        '#!/usr/bin/env python3'*) python+=("$file") ;;
+        # one way to name each interpreter; a script that starts another way isn't checked at all
+        '#!'*) fail "first line: $file: $first (#!/usr/bin/env bash, #!/usr/bin/env python3 or #!/bin/sh)" ;;
     esac
 done
 
-# Every theme renders every template (in memory; nothing is written)
+# Shell: syntax, then shellcheck (.shellcheckrc lists what it leaves alone)
+for file in "${shell[@]}"; do
+    bash -n "$file" 2>/dev/null || fail "shell syntax: $file"
+done
+if command -v shellcheck >/dev/null; then
+    while IFS= read -r line; do
+        fail "shellcheck: $line"
+    done < <(shellcheck -f gcc "${shell[@]}" 2>&1)
+else
+    printf '\e[33m%s\e[0m\n' "shellcheck isn't installed: the scripts' syntax is checked, nothing more."
+fi
+
+# Lua: all at once, then one by one to name the file
+luac -p "${lua[@]}" 2>/dev/null || for file in "${lua[@]}"; do
+    luac -p "$file" 2>/dev/null || fail "Lua syntax: $file"
+done
+
+# The shell's files: syntax only. Outside the running shell qmllint can't find the shell's own
+# modules (qs.config, ...), so what it says beyond syntax isn't reliable here.
+qmllint=/usr/lib/qt6/bin/qmllint
+if [[ -x $qmllint ]]; then
+    while IFS= read -r line; do
+        fail "QML syntax: ${line#Warning: }"
+    done < <("$qmllint" --bare "${qml[@]}" 2>&1 | grep -F '[syntax]')
+fi
+
+# Python, TOML and JSON parse; every theme renders every template (in memory); and the settings'
+# starting values are the same in the three places that have them
 while IFS= read -r line; do
-    fail "theme: $line"
-done < <(PYTHONDONTWRITEBYTECODE=1 python3 - "$hyprdori" <<'PY'
-import importlib.machinery, importlib.util, sys
+    fail "$line"
+done < <(PYTHONDONTWRITEBYTECODE=1 python3 - "$hyprdori" "${python[@]}" "${data[@]}" <<'PY'
+import ast, json, re, sys, tomllib
 from pathlib import Path
 root = Path(sys.argv[1])
-loader = importlib.machinery.SourceFileLoader("theme_set", str(root / "bin/.local/bin/hyprdori-theme-set"))
-spec = importlib.util.spec_from_loader("theme_set", loader)
-ts = importlib.util.module_from_spec(spec)
-loader.exec_module(ts)
-ts.THEMES_DIR = root / "theme/.config/theme/themes"
-ts.OVERRIDES_DIR = root / "theme/.config/theme/overrides"
+for name in sys.argv[2:]:
+    kind = "TOML" if name.endswith(".toml") else "JSON" if name.endswith(".json") else "Python"
+    try:
+        text = Path(name).read_text()
+        {"TOML": tomllib.loads, "JSON": json.loads, "Python": ast.parse}[kind](text)
+    except (ValueError, SyntaxError) as e:
+        print(f"{kind} syntax: {name}: {e}")
+
+# hyprdori-theme-set's parts
+sys.path.insert(0, str(root / "bin/.local/lib/hyprdori"))
+try:
+    import theme_colors, theme_render
+except Exception as e:
+    print(f"theme: the parts in bin/.local/lib/hyprdori don't load: {e}")
+    sys.exit()
+theme_colors.THEMES_DIR = root / "theme/.config/theme/themes"
+theme_colors.OVERRIDES_DIR = root / "theme/.config/theme/overrides"
 templates = sorted((root / "theme/.config/theme/templates").glob("*.tpl"))
 templates.append(root / "fastfetch/.config/fastfetch/base.jsonc")
-names = sorted(p.parent.name for p in ts.THEMES_DIR.glob("*/colors.toml"))
+names = sorted(p.parent.name for p in theme_colors.THEMES_DIR.glob("*/colors.toml"))
 if not names:
-    print("no themes")
+    print("theme: no themes")
 for name in names:
     try:
-        theme = ts.load_theme(name)
+        theme = theme_colors.load_theme(name)
     except Exception as e:
-        print(f"{name}: {e}")
+        print(f"theme: {name}: {e}")
         continue
     for tpl in templates:
         try:
-            out = ts.render(tpl.read_text(), theme, tpl.name)
+            out = theme_render.render(tpl.read_text(), theme, tpl.name)
         except Exception as e:
-            print(f"{name}: {e}")
+            print(f"theme: {name}: {e}")
             continue
-        left = ts.PLACEHOLDER_RE.search(out)
+        left = theme_render.PLACEHOLDER_RE.search(out)
         if left:
-            print(f"{name}: {tpl.name}: unfilled {left.group(0)}")
+            print(f"theme: {name}: {tpl.name}: unfilled {left.group(0)}")
+
+# Settings: the shell's built-in values (Config.qml), its defaults.json, and what
+# hyprdori-theme-set uses before either is there (SETTING_DEFAULTS)
+shell = root / "quickshell/.config/quickshell/config"
+try:
+    saved = json.loads((shell / "defaults.json").read_text())
+    qml = (shell / "Config.qml").read_text()
+    qml = qml[qml.index("JsonAdapter"):]
+except (OSError, ValueError) as e:
+    print(f"settings: {e}")
+    sys.exit()
+builtin = {}
+for name, value in re.findall(r"^\s*property \w+ (\w+): (.+)$", qml, re.M):
+    try:
+        builtin[name] = json.loads("{}" if value == "({})" else value)
+    except ValueError:
+        pass
+builtin.pop("version", None)
+saved.pop("version", None)
+for name in sorted(builtin.keys() | saved.keys()):
+    if name not in saved:
+        print(f"settings: {name} is in Config.qml, not in defaults.json")
+    elif name not in builtin:
+        print(f"settings: {name} is in defaults.json, not in Config.qml")
+    elif builtin[name] != saved[name] and not isinstance(saved[name], dict):  # per-theme and per-monitor choices
+        print(f"settings: {name} is {builtin[name]!r} in Config.qml, {saved[name]!r} in defaults.json")
+for name, value in theme_colors.SETTING_DEFAULTS.items():
+    if name not in saved:
+        print(f"settings: {name} (hyprdori-theme-set's SETTING_DEFAULTS) isn't in defaults.json")
+    elif saved[name] != value and not isinstance(value, dict):
+        print(f"settings: {name} is {value!r} in SETTING_DEFAULTS, {saved[name]!r} in defaults.json")
 PY
 )
+
+# The shell's windows that Hyprland keeps floating: the titles in Hyprland's rule, the ones the
+# shell reopens when tiled (Hypr.qml) and the windows' own titles are the same
+titles_rule=$(grep -o 'title = "^([^)]*)\$"' hypr/.config/hypr/configs/rules.lua | sed 's/.*(\(.*\)).*/\1/' | tr '|' '\n' | sort)
+titles_shell=$(grep -o 'shellWindows: ({[^}]*})' quickshell/.config/quickshell/services/Hypr.qml | grep -o '"[^"]*":' | tr -d '":' | sort)
+[[ -n $titles_rule && $titles_rule == "$titles_shell" ]] ||
+    fail "shell window titles differ: rules.lua (${titles_rule//$'\n'/, }), Hypr.qml shellWindows (${titles_shell//$'\n'/, })"
+while IFS= read -r title; do
+    [[ -z $title ]] || git grep -q -E "^    title: \"$title\"\$" -- 'quickshell/*.qml' ||
+        fail "shell window title: no window is titled \"$title\" (rules.lua, Hypr.qml)"
+done <<<"$titles_rule"
+# the titles the bar shows an icon for are windows' titles too (the shell's, or a script's kitty)
+while IFS= read -r title; do
+    [[ -z $title ]] || git grep -q -E "title: \"$title\"|--title \"$title\"" -- 'quickshell/*.qml' 'bin/*' ||
+        fail "shell window title: no window is titled \"$title\" (WindowTitle.qml shellIcons)"
+done < <(grep -o 'shellIcons: ({[^}]*})' quickshell/.config/quickshell/modules/bar/WindowTitle.qml | grep -o '"[^"]*":' | tr -d '":')
 
 # The shell names colors as the themes do
 while IFS= read -r line; do

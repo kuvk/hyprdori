@@ -262,8 +262,9 @@ for dir in "$hyprdori"/*/; do
     name=$(basename "$dir")
     [[ " ${not_stowed[*]} " == *" $name "* ]] || stowed+=("$name")
 done
-# a folder systemd writes into itself stays a real one (as install.sh makes it)
-mkdir -p "$HOME/.local/share/systemd/user"
+# folders others write into stay real ones (as install.sh makes them): systemd's, and
+# ~/.local/lib, where only lib/hyprdori is Hyprdori's
+mkdir -p "$HOME/.local/share/systemd/user" "$HOME/.local/lib"
 if out=$(stow -v -d "$hyprdori" -t "$HOME" --restow "${stowed[@]}" 2>&1); then
     # re-made links say "(reverts previous action)": only the others are new or gone
     changes=$(printf '%s\n' "$out" | awk '

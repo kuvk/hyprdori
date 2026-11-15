@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # System Information: fastfetch in a kitty window of its own, sized to the output, with no
 # cursor or prompt; any key closes it, and running this again while it's open closes it too.
 # The text is kitty's, so it can be selected and copied. After Omarchy's About window

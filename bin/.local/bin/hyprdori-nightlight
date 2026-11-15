@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Night light (hyprsunset) at the temperature from Settings > Screen & Sleep > Night light.
 #
 #   hyprdori-nightlight           toggle
