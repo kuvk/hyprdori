@@ -28,7 +28,6 @@ hyprland
 hyprpaper
 hyprsunset
 hyprshot
-hyprshutdown
 hyprpolkitagent
 xdg-desktop-portal-hyprland
 xdg-desktop-portal-gtk

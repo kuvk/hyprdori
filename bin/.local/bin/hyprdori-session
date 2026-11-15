@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Log out, reboot or shut down once the open apps have closed: every window is asked to close,
+# as its own close button would, and when all are gone within 5 seconds the session ends. A
+# window still open then (an app asking about unsaved work) cancels it: nothing is lost, and a
+# notification names the apps to see to. The on-screen display says what's happening.
+#
+#   hyprdori-session logout|reboot|shutdown   (the power menu and the Control Center)
+
+# -h, --help: the comment above, then nothing else runs
+case ${1:-} in -h | --help | "") awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; exit 0 ;; esac
+set -uo pipefail
+# the terminal this was typed in is one of the windows that close
+trap '' HUP
+
+case $1 in
+    logout) icon=signOut doing="Logging out" failed="Not logged out" ;;
+    reboot) icon=reboot doing="Rebooting" failed="Not rebooted" ;;
+    shutdown) icon=power doing="Shutting down" failed="Not shut down" ;;
+    *) echo "usage: hyprdori-session logout|reboot|shutdown" >&2; exit 1 ;;
+esac
+
+"$HOME/.local/bin/hyprdori-osd" "$icon" "$doing" 5000
+
+clients=$(hyprctl clients -j 2>/dev/null) || clients='[]'
+mapfile -t pids < <(jq -r '[.[].pid | select(. > 0)] | unique[]' <<<"$clients")
+while read -r address; do
+    hyprctl dispatch "hl.dsp.window.close({ window = \"address:$address\" })" >/dev/null 2>&1
+done < <(jq -r '.[].address' <<<"$clients")
+
+# Until every window is gone, 5 seconds at most
+open=
+for _ in {1..25}; do
+    open=$(hyprctl clients -j 2>/dev/null | jq -r '[.[].class] | unique | join(", ")')
+    [[ -z $open ]] && break
+    sleep 0.2
+done
+if [[ -n $open ]]; then
+    notify-send -a Session -i system-shutdown "$failed" "Still open: $open. Close them, then try again." 2>/dev/null
+    exit 1
+fi
+# and a moment more for the apps themselves to finish writing what they keep (2 seconds at most)
+for _ in {1..10}; do
+    alive=false
+    for pid in "${pids[@]}"; do
+        [[ $pid != "$$" && $pid != "$PPID" ]] && kill -0 "$pid" 2>/dev/null && alive=true
+    done
+    $alive || break
+    sleep 0.2
+done
+
+# --no-wall: no "The system will power off now!" on the console before the splash shows
+case $1 in
+    logout) hyprctl dispatch 'hl.dsp.exit()' >/dev/null ;;
+    reboot) systemctl reboot --no-wall ;;
+    shutdown) systemctl poweroff --no-wall ;;
+esac

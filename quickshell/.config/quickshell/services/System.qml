@@ -188,17 +188,12 @@ Singleton {
             // hyprdori-sleep-lock locks before sleeping
             Quickshell.execDetached(["systemctl", "suspend"]);
             break;
-        // hyprshutdown asks every app to close (an app with unsaved work can ask first), exits
-        // Hyprland, then runs the post command: reboot and power off happen after a clean exit.
-        // --no-wall: no "The system will power off now!" on the console before Plymouth shows
+        // hyprdori-session asks every app to close, and ends the session once all have; an app
+        // still open (asking about unsaved work) cancels it, with a notification
         case "logout":
-            Quickshell.execDetached(["hyprshutdown", "-t", "Logging out ..."]);
-            break;
         case "reboot":
-            Quickshell.execDetached(["hyprshutdown", "-t", "Rebooting ...", "-p", "systemctl --no-wall reboot"]);
-            break;
         case "shutdown":
-            Quickshell.execDetached(["hyprshutdown", "-t", "Shutting down ...", "-p", "systemctl --no-wall poweroff"]);
+            Quickshell.execDetached([scripts + "hyprdori-session", id]);
             break;
         }
     }
