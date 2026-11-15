@@ -436,7 +436,7 @@ def pause(state: str | None = None) -> None:
     mons = [p.name[len("mpv-"):-len(".sock")] for p in RUNTIME_DIR.glob("mpv-*.sock")]
     if not mons:
         if state is None:
-            notify("No live wallpaper is running")
+            osd("image", "No live wallpaper is running")
         return
     for mon in mons:
         if state is None:
@@ -446,7 +446,8 @@ def pause(state: str | None = None) -> None:
     if state is not None:
         return  # Work-Game says so itself
     reply = mpv_command(mons[0], ["get_property", "pause"])
-    notify("Live wallpapers paused" if reply and reply.get("data") else "Live wallpapers resumed")
+    paused = bool(reply and reply.get("data"))
+    osd("pause" if paused else "play", "Live wallpapers paused" if paused else "Live wallpapers resumed")
 
 
 def restore() -> None:
@@ -461,6 +462,11 @@ def restore() -> None:
     if state["live"]:
         state["live"] = {}
         save_state(state)
+
+
+def osd(icon: str, text: str) -> None:
+    """A line on the shell's on-screen display, for a moment (hyprdori-osd)."""
+    run([str(Path.home() / ".local/bin/hyprdori-osd"), icon, text])
 
 
 def notify(body: str) -> None:

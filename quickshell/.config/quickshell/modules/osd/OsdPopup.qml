@@ -20,12 +20,13 @@ PanelWindow {
     margins.bottom: Math.round((screen?.height ?? 1080) * 0.1)
     exclusionMode: ExclusionMode.Ignore
     // A level: room for the bar. A state: as wide as the widest state (Osd.labels) at the
-    // current text size, so they all match; its icon and name centered.
+    // current text size, so they all match, or as a script's longer message; its icon and
+    // name centered.
     implicitWidth: Osd.entry.level >= 0 ? 320 : stateWidth
     readonly property int stateWidth: {
         // advanceWidth() alone doesn't update when the font changes
         labelMetrics.font;
-        const widest = Math.max(...Osd.labels.map(l => labelMetrics.advanceWidth(l)));
+        const widest = Math.max(...Osd.labels.concat([Osd.entry.label]).map(l => labelMetrics.advanceWidth(l)));
         return Math.ceil(iconWidth + row.spacing + widest) + 2 * padding;
     }
     readonly property int iconWidth: 20

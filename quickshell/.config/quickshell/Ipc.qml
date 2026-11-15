@@ -189,6 +189,17 @@ Scope {
     }
 
     IpcHandler {
+        target: "osd"
+
+        // a line on the on-screen display (hyprdori-osd): an icon's name in Icons, the text,
+        // and how long in ms (0: the usual)
+        // (not "show": qs ipc takes that word for its own command)
+        function message(icon: string, text: string, ms: int): void {
+            Osd.message(icon, text, ms);
+        }
+    }
+
+    IpcHandler {
         target: "panels"
 
         function close(): void {

@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# A short message on the shell's on-screen display: an icon and a line of text at the bottom of
+# the focused monitor, gone by itself, for what was just switched on or off. Nothing is kept, as
+# a notification would be. Without the shell running, a notification instead.
+#
+#   hyprdori-osd ICON TEXT [MS]   ICON: a name in the shell's config/Icons.qml (rocket, image,
+#                                 pause, ...) or the glyph itself; MS: how long (1500)
+
+# -h, --help: the comment above, then nothing else runs
+case ${1:-} in -h | --help | "") awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; exit 0 ;; esac
+set -uo pipefail
+
+icon=$1 text=${2:?text} ms=${3:-0}
+qs ipc call osd message "$icon" "$text" "$ms" >/dev/null 2>&1 && exit 0
+command -v notify-send >/dev/null && notify-send -a Hyprdori "$text"
+exit 0

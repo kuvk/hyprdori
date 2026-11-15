@@ -8,7 +8,7 @@ import qs.config
 
 // The on-screen display's state (modules/osd/OsdPopup.qml): what changed last, shown for a
 // moment. `kinds` says what each OSD shows; the sources below call show(name) when their
-// value changes.
+// value changes. Scripts show a line of their own with message().
 Singleton {
     id: root
 
@@ -73,6 +73,17 @@ Singleton {
             dim: e.dim ?? false
         };
         root.shown = true;
+        hide.interval = 1500;
+        hide.restart();
+    }
+
+    // A message from a script (hyprdori-osd: qs ipc call osd message ICON TEXT MS): an icon, by
+    // its name in Icons or the glyph itself, and a line of text, for ms (0: as the others)
+    function message(icon: string, text: string, ms: int): void {
+        const glyph = Icons[icon];
+        root.entry = { icon: typeof glyph === "string" ? glyph : icon, level: -1, steps: 0, label: text, dim: false };
+        root.shown = true;
+        hide.interval = ms > 0 ? ms : 1500;
         hide.restart();
     }
 

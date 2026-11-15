@@ -33,12 +33,8 @@ borders="package.loaded['configs.generated.theme'] = nil
 local ok, theme = pcall(require, 'configs.generated.theme')
 local borders = ok and { active_border = theme.active_border, inactive_border = theme.inactive_border } or nil"
 
-# notify TITLE [BODY]
-notify() {
-    command -v notify-send >/dev/null 2>&1 || return 0
-    # the body is a key hint: the shell shows it smaller (x-hyprdori.hint)
-    notify-send -a "Work-Game" -i input-gaming -c x-hyprdori.hint "$@"
-}
+# The mode on the on-screen display, for a moment
+osd() { "$HOME/.local/bin/hyprdori-osd" "$@"; }
 
 current_mode() {
     if [[ -e $FLAG ]]; then
@@ -116,9 +112,9 @@ set_mode() {
     qs ipc call theme mode "$target" >/dev/null 2>&1 || true
 
     case $target in
-        work) notify "Work mode is ON" "SUPER+CTRL+G switches to Game mode." ;;
-        game) notify "Game mode is ON" "SUPER+G switches to Work mode." ;;
-        normal) notify "Work-Game is OFF" ;;
+        work) osd rocket "Work" ;;
+        game) osd gamepad "Game" ;;
+        normal) osd rocket "Off" ;;
     esac
 }
 

@@ -65,7 +65,6 @@ Singleton {
     // Shell glyphs for Hyprdori's own scripts, matching the bar and Control
     // Center. Add a script here by its notify-send -a name.
     readonly property var appGlyphs: ({
-            "Work-Game": Icons.rocket,
             "Theme": Icons.palette,
             "Wallpapers": Icons.image
         })
