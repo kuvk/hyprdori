@@ -6,9 +6,9 @@
 #
 #   hyprdori-notify SENDER TITLE [BODY] [notify-send's options...]
 #
-# SENDER: theme, wallpapers, update, boot, lock, session, spotify, sysinfo, osd. What follows goes
-# to notify-send as it is (-u critical, -A update=Update, -c x-hyprdori.hint for a smaller key
-# hint as the body), and what notify-send prints (the button clicked) is printed.
+# SENDER: theme, wallpapers, update, boot, lock, session, spotify, sysinfo, osd, hyprland. What
+# follows goes to notify-send as it is (-u critical, -A update=Update, -c x-hyprdori.hint for a
+# smaller key hint as the body), and what notify-send prints (the button clicked) is printed.
 
 # -h, --help: the comment above, then nothing else runs
 case ${1:-} in -h | --help | "") awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; exit 0 ;; esac
@@ -24,7 +24,8 @@ case $1 in
     spotify) sender=(-a Spotify) ;;
     sysinfo) sender=(-a "System Information") ;;
     osd) sender=(-a Hyprdori) ;;
-    *) echo "hyprdori-notify: no sender $1 (theme, wallpapers, update, boot, lock, session, spotify, sysinfo, osd)" >&2; exit 1 ;;
+    hyprland) sender=(-a Hyprland) ;;
+    *) echo "hyprdori-notify: no sender $1 (theme, wallpapers, update, boot, lock, session, spotify, sysinfo, osd, hyprland)" >&2; exit 1 ;;
 esac
 shift
 command -v notify-send >/dev/null || exit 0
