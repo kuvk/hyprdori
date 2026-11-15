@@ -53,10 +53,12 @@ list() { sed 's/#.*//; s/[[:space:]]//g; /^$/d' "$hyprdori/packages/$1.txt"; }
 # archlinux.org's for a repo not enabled yet, such as multilib), the AUR or Flathub; nothing
 # printed when it's in none of them (or the lookup can't be made). Flathub IDs (two dots or more)
 # are tried there first.
+# A Flathub app ID (com.example.App: two dots or more), as against a package's name
+is_flathub() { [[ $1 =~ ^[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z0-9_-]+){2,}$ ]]; }
 source_of() {
     local name=$1
     on_flathub() { [[ $(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://flathub.org/api/v2/appstream/$name") == 200 ]]; }
-    if [[ $name =~ ^[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z0-9_-]+){2,}$ ]] && on_flathub; then
+    if is_flathub "$name" && on_flathub; then
         echo flatpak
     elif pacman -Si -- "$name" &>/dev/null ||
         curl -fsS --max-time 10 --get --data-urlencode "name=$name" https://archlinux.org/packages/search/json/ 2>/dev/null |
@@ -84,11 +86,26 @@ in_the_way() {
         done < <(find "$hyprdori/$name" \( -type f -o -type l \) -print0)
     done
 }
-# Every package of the chosen lists and the extra ones, once each
+# Every package of the chosen lists and the extra ones, once each. A list may name Flathub apps
+# next to packages (gaming.txt): those are wanted_flatpaks'
 wanted_packages() {
+    local name
     {
-        for group in "${groups[@]}"; do list "$group"; done
+        for group in "${groups[@]}"; do
+            while read -r name; do is_flathub "$name" || echo "$name"; done < <(list "$group")
+        done
         ((${#user_native[@]})) && printf '%s\n' "${user_native[@]}"
+    } | sort -u
+}
+# Every Flathub app: flatpak.txt if chosen, the ones in the chosen lists, the extra ones
+wanted_flatpaks() {
+    local name
+    {
+        $flatpak && list flatpak
+        for group in "${groups[@]}"; do
+            while read -r name; do is_flathub "$name" && echo "$name"; done < <(list "$group")
+        done
+        ((${#user_flatpak[@]})) && printf '%s\n' "${user_flatpak[@]}"
     } | sort -u
 }
 # The system services enabled for the chosen lists
@@ -132,11 +149,9 @@ dry_report() {
     mapfile -t missing < <(comm -23 <(printf '%s\n' "${names[@]}") <(pacman -Qq | sort -u))
     echo "${#names[@]} in the chosen lists, ${#missing[@]} not installed${missing:+:}"
     ((${#missing[@]})) && printf '%s\n' "${missing[@]}" | column -c "$(tput cols 2>/dev/null || echo 100)" | sed 's/^/  /'
-    if $flatpak || ((${#user_flatpak[@]})); then
+    mapfile -t names < <(wanted_flatpaks)
+    if ((${#names[@]})); then
         step "Flatpak"
-        names=()
-        $flatpak && mapfile -t names < <(list flatpak)
-        names+=("${user_flatpak[@]}")
         echo "Would install from Flathub: ${names[*]}"
     fi
     step "Services"
@@ -199,6 +214,9 @@ if ask "Desktop PC: fan, pump and RGB control: CoolerControl, liquidctl, OpenRGB
     groups+=(desktop)
 fi
 ask "Apps with window rules (packages/apps.txt)?" y && groups+=(apps)
+if ask "Gaming: Steam, Lutris, Gamescope, ProtonUp-Qt, and Heroic from Flathub (packages/gaming.txt)?" "$($guest && echo n || echo y)"; then
+    groups+=(gaming)
+fi
 if ask "Virtual machines and Docker (packages/vm.txt)?" "$($guest && echo n || echo y)"; then
     groups+=(vm)
     has_gpu 0x10de && groups+=(nvidia-docker)
@@ -373,13 +391,12 @@ if ! paru -Syu --needed "${wanted[@]}"; then
     fi
 fi
 
-# Hyprdori's Flatpak apps if chosen, and the extra ones from ~/.config/hyprdori/user_pkg.txt
-if $flatpak || ((${#user_flatpak[@]})); then
+# Flathub's apps: flatpak.txt if chosen, the ones in the chosen lists (gaming.txt) and the extra
+# ones from ~/.config/hyprdori/user_pkg.txt
+mapfile -t apps < <(wanted_flatpaks)
+if ((${#apps[@]})); then
     step "Flatpak"
     sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-    apps=()
-    $flatpak && mapfile -t apps < <(list flatpak)
-    apps+=("${user_flatpak[@]}")
     sudo flatpak install -y --noninteractive flathub "${apps[@]}"
 fi
 

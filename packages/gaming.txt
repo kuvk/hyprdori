@@ -1,0 +1,9 @@
+# Games: the launchers and what they run with. Optional (install.sh asks). Packages and Flathub
+# apps together: a name with two dots or more is a Flathub ID and is installed with flatpak.
+# "# AUR" marks AUR packages. The 32-bit graphics libraries Steam needs are in core.txt and the
+# GPU's own list.
+steam
+lutris
+gamescope                # a game in its own small compositor: scaling, frame limits
+protonup-qt              # AUR, installs Proton-GE and Wine-GE for Steam and Lutris
+com.heroicgameslauncher.hgl   # Heroic: Epic, GOG and Amazon games
