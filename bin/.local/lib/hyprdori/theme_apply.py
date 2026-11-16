@@ -9,6 +9,7 @@ import signal
 import subprocess
 from pathlib import Path
 
+import browsers as browser_table
 from theme_colors import CURRENT_DIR, HOME, current_theme, notify, run_quiet
 from theme_render import EXTRA_DESTINATIONS, SPICETIFY_DIR, generate, write_if_changed
 
@@ -260,7 +261,7 @@ BROWSER_HELPER = "/usr/local/bin/browser-theme-policy"
 
 
 def browsers(color: str) -> None:
-    """Chromium/Brave theme color via managed policy (hyprdori-browser-theme-setup).
+    """The Chromium-based browsers' theme color via managed policy (hyprdori-browser-theme-setup).
     Does nothing until that one-time setup has been run."""
     if not Path(BROWSER_HELPER).exists() or not shutil.which("sudo"):
         return
@@ -272,14 +273,10 @@ def browsers(color: str) -> None:
     if result.returncode != 0:
         return
     # Running browsers pick the policy up without a restart
-    for proc, binary in (("chromium", "chromium"), ("brave", "brave")):
-        if (
-            shutil.which(binary)
-            and subprocess.run(["pgrep", "-x", proc], capture_output=True).returncode
-            == 0
-        ):
+    for browser in browser_table.installed(default_first=False):
+        if browser.policy and subprocess.run(["pgrep", "-x", browser.process], capture_output=True).returncode == 0:
             subprocess.Popen(
-                [binary, "--refresh-platform-policy", "--no-startup-window"],
+                [browser.command, "--refresh-platform-policy", "--no-startup-window"],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
                 start_new_session=True,

@@ -13,8 +13,9 @@ shows up in the search launcher and the app menu (Internet).
   hyprdori-webapp remove NAME                      remove one
   hyprdori-webapp launch [--browser B] URL         open URL as a web app (used by the entries)
 
-B is a Chromium-based browser's command (brave, chromium, google-chrome-stable,
-vivaldi-stable); without it, the first of those installed.
+B is a Chromium-based browser's command (chromium, brave, google-chrome-stable,
+vivaldi-stable: the rows of ~/.local/lib/hyprdori/browsers); without it, the default browser
+when it's one of those, else the first of them installed.
 
 ICON is optional: a PNG URL, a local image file, or a name from
 https://dashboardicons.com (e.g. "whatsapp"). Without one, the app's name is
@@ -36,6 +37,11 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+# The browsers' table is beside the commands, in ../lib/hyprdori (the repo's bin/.local/lib/hyprdori)
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib/hyprdori"))
+
+import browsers as browser_table
+
 HOME = Path.home()
 DATA = Path(os.environ.get("XDG_DATA_HOME", HOME / ".local/share"))
 APPS_DIR = DATA / "applications"
@@ -46,7 +52,7 @@ SELF = Path.home() / ".local/bin/hyprdori-webapp"
 
 DASHBOARD_ICONS = "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/{}.png"
 FAVICON = "https://www.google.com/s2/favicons?domain={}&sz=256"
-BROWSERS = ["brave", "brave-browser", "chromium", "google-chrome-stable", "vivaldi-stable"]
+BROWSERS = [b.command for b in browser_table.known()]
 
 
 def slug(name: str) -> str:
@@ -63,9 +69,9 @@ def normalize_url(url: str) -> str:
 
 
 def installed_browsers() -> list[str]:
-    """The Chromium-based browsers installed (web apps need --app), one command per browser."""
-    found = [b for b in BROWSERS if shutil.which(b)]
-    return [b for b in found if not (b == "brave-browser" and "brave" in found)]
+    """The Chromium-based browsers installed (web apps need --app), one command per browser,
+    the default browser first."""
+    return [b.command for b in browser_table.installed()]
 
 
 def browser(preferred: str | None = None) -> str:
@@ -135,7 +141,7 @@ def window_class(b: str, url: str) -> str:
     "brave", Chromium and Chrome "chrome"."""
     parts = urllib.parse.urlparse(url)
     path = (parts.path or "/").replace("/", "_")
-    base = {"brave-browser": "brave", "google-chrome-stable": "chrome", "chromium": "chrome"}.get(b, b)
+    base = next((row.app_class for row in browser_table.known() if row.command == b), b)
     return f"{base}-{parts.netloc}_{path}-Default"
 
 

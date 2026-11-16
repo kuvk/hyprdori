@@ -1,0 +1,15 @@
+# The Chromium-based browsers Hyprdori knows: what web apps can run in, what hyprdori-browser
+# opens by name, and where the theme's color goes. A browser is added by its row. Read by
+# hyprdori-browser, hyprdori-webapp, hyprdori-browser-theme-setup and hyprdori-theme-set.
+#
+# command: what starts it. entry: its launcher entry, which the default browser is named by.
+# process: its name among the running programs. class: what its web app windows' class starts
+# with. policy: the folder its managed policies are read from (the theme's color), or - when
+# the color isn't set for it.
+#
+# command               entry                    process      class            policy
+chromium                chromium.desktop         chromium     chrome           /etc/chromium/policies/managed
+brave                   brave-browser.desktop    brave        brave            /etc/brave/policies/managed
+brave-browser           brave-browser.desktop    brave        brave            /etc/brave/policies/managed
+google-chrome-stable    google-chrome.desktop    chrome       chrome           /etc/opt/chrome/policies/managed
+vivaldi-stable          vivaldi-stable.desktop   vivaldi-bin  vivaldi-stable   -

@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# The default browser, opened, named or changed. Whatever the system has as its default web
+# browser (xdg-settings) is the one the browser key opens, links open in, and web apps prefer
+# when it's a Chromium-based one.
+#
+#   hyprdori-browser [URL...]   opens the default browser (SUPER+CTRL+Return), at URL if given
+#   hyprdori-browser default    prints its launcher entry (chromium.desktop)
+#   hyprdori-browser list       the Chromium-based browsers installed, the default marked *
+#   hyprdori-browser set NAME   makes NAME the default: a command from the list (chromium, brave)
+#                               or any browser's launcher entry (firefox, zen.desktop)
+#
+# The known Chromium-based browsers are the rows of ~/.local/lib/hyprdori/browsers; those get
+# the theme's color (hyprdori-browser-theme-setup) and can hold web apps (hyprdori-webapp).
+
+# -h, --help: the comment above, then nothing else runs
+case ${1:-} in -h | --help) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; exit 0 ;; esac
+set -uo pipefail
+
+table=$(dirname "$(readlink -f "$0")")/../lib/hyprdori/browsers
+# the table's rows: command entry process class policy
+rows() { sed 's/#.*//' "$table" | awk 'NF == 5'; }
+default_entry() { xdg-settings get default-web-browser 2>/dev/null; }
+# where launcher entries are
+entry_exists() {
+    local dir
+    for dir in "${XDG_DATA_HOME:-$HOME/.local/share}" /usr/local/share /usr/share /var/lib/flatpak/exports/share "$HOME/.local/share/flatpak/exports/share"; do
+        [[ -e $dir/applications/$1 ]] && return 0
+    done
+    return 1
+}
+
+case ${1:-} in
+    default)
+        default_entry
+        ;;
+    list)
+        default=$(default_entry) seen=" "
+        while read -r command entry _; do
+            [[ $seen == *" $entry "* ]] && continue
+            command -v "$command" >/dev/null || continue
+            seen+="$entry "
+            [[ $entry == "$default" ]] && mark="*" || mark=" "
+            printf '%s %s\n' "$mark" "$command"
+        done < <(rows)
+        ;;
+    set)
+        name=${2:?a browser: hyprdori-browser list shows the Chromium-based ones installed}
+        entry=$(rows | awk -v name="$name" '$1 == name { print $2; exit }')
+        [[ -n $entry ]] || entry=${name%.desktop}.desktop
+        entry_exists "$entry" || { echo "hyprdori-browser: $name isn't installed (no launcher entry $entry)" >&2; exit 1; }
+        xdg-settings set default-web-browser "$entry" || exit 1
+        echo "Default browser: $entry"
+        ;;
+    *)
+        entry=$(default_entry)
+        # a known one by its command; another by its launcher entry; none set: the first known one
+        while read -r command row_entry _; do
+            if [[ -z $entry || $row_entry == "$entry" ]] && command -v "$command" >/dev/null; then
+                exec "$command" "$@"
+            fi
+        done < <(rows)
+        if [[ -n $entry ]] && command -v gtk-launch >/dev/null; then
+            exec gtk-launch "${entry%.desktop}" "$@"
+        fi
+        "$HOME/.local/bin/hyprdori-notify" hyprland "No browser to open" "None is installed, or none is the default (hyprdori-browser set NAME)."
+        exit 1
+        ;;
+esac
