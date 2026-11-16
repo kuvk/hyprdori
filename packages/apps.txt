@@ -2,14 +2,13 @@
 # without them. "# AUR" marks AUR packages. Installed by hand: DaVinci Resolve (its PKGBUILD
 # needs editing) and Frame Checker (github.com/kuvk/frame-checker).
 chromium
-blueman
 brasero
 gimp
 thunderbird
-pavucontrol
 qbittorrent
 remmina
 spotify-launcher
 vlc
 libreoffice-fresh        # also yazi's office previews
 localsend-bin            # AUR
+parsec-bin

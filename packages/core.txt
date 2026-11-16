@@ -1,5 +1,6 @@
-# Everything Hyprdori needs, on every machine. One package per line; "# AUR" marks AUR
-# packages (paru installs both). Arch's own install covers the rest: base, linux-firmware,
+# Everything Hyprdori needs, on every machine, to work with nothing left to do by hand. While one
+# of these isn't installed, install.sh stops after the packages. One package per line; "# AUR"
+# marks AUR packages (paru installs both). Arch's own install covers the rest: base, linux-firmware,
 # the CPU's microcode, cryptsetup, lvm2.
 
 # Kernels (both, with headers for the NVIDIA module)
@@ -39,6 +40,8 @@ qt6-wayland
 qt5-wayland
 networkmanager
 nm-connection-editor     # the network dropdown's settings button
+blueman                  # the Bluetooth dropdown's settings button
+pavucontrol              # the audio dropdown's settings button
 bluez
 bluez-utils
 upower

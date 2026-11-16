@@ -97,6 +97,17 @@ wanted_packages() {
         ((${#user_native[@]})) && printf '%s\n' "${user_native[@]}"
     } | sort -u
 }
+# The packages the config can't do without: core.txt and the lists the hardware picked (the GPU's
+# driver, a virtual machine's agent). Without one of them the install stops after the packages;
+# the lists that were asked about (apps, gaming, ...) and the extra ones only say what failed.
+needed_lists=(core guest nvidia intel amd hybrid)
+needed_packages() {
+    local group name
+    for group in "${groups[@]}"; do
+        [[ " ${needed_lists[*]} " == *" $group "* ]] || continue
+        while read -r name; do is_flathub "$name" || echo "$name"; done < <(list "$group")
+    done | sort -u
+}
 # Every Flathub app: flatpak.txt if chosen, the ones in the chosen lists, the extra ones
 wanted_flatpaks() {
     local name
@@ -149,6 +160,8 @@ dry_report() {
     mapfile -t missing < <(comm -23 <(printf '%s\n' "${names[@]}") <(pacman -Qq | sort -u))
     echo "${#names[@]} in the chosen lists, ${#missing[@]} not installed${missing:+:}"
     ((${#missing[@]})) && printf '%s\n' "${missing[@]}" | column -c "$(tput cols 2>/dev/null || echo 100)" | sed 's/^/  /'
+    mapfile -t missing < <(comm -12 <(printf '%s\n' "${missing[@]}") <(needed_packages))
+    ((${#missing[@]})) && echo "Needed (the install stops after the packages while one is missing): ${missing[*]}"
     mapfile -t names < <(wanted_flatpaks)
     if ((${#names[@]})); then
         step "Flatpak"
@@ -387,8 +400,21 @@ if ! paru -Syu --needed "${wanted[@]}"; then
         paru -S --needed --noconfirm "$pkg" || failed+=("$pkg")
     done
     if ((${#failed[@]})); then
-        note "Not installed: ${failed[*]}. The rest of the install goes on; try them later with paru -S."
+        note "Not installed: ${failed[*]}. Try them later with paru -S."
     fi
+fi
+# Without a needed package the rest would set up what isn't there (a login screen's theme with
+# no login screen): stop here, whatever kept it from installing
+missing=()
+while read -r pkg; do
+    pacman -Q "$pkg" &>/dev/null || missing+=("$pkg")
+done < <(needed_packages)
+if ((${#missing[@]})); then
+    printf '\n\e[1;31m%s\e[0m\n' "Needed and not installed: ${missing[*]}"
+    echo "Stopped after the packages: no services, theme or boot screens were set up, and nothing
+that was there before is changed. Install them (paru -S ${missing[*]}), then run
+install.sh again: it skips what's done and goes on from here."
+    exit 1
 fi
 
 # Flathub's apps: flatpak.txt if chosen, the ones in the chosen lists (gaming.txt) and the extra
