@@ -1,14 +1,13 @@
 # Apps with window rules in hypr/.config/hypr/configs/rules.lua. Optional: Hyprdori works
 # without them. "# AUR" marks AUR packages. Installed by hand: DaVinci Resolve (its PKGBUILD
 # needs editing) and Frame Checker (github.com/kuvk/frame-checker).
-chromium
 brasero
 gimp
 thunderbird
 qbittorrent
 remmina
 spotify-launcher
-vlc
-libreoffice-fresh        # also yazi's office previews
+libreoffice-fresh        # also yazi's office previews (without it they say so)
+brave-bin                # AUR, a second browser: hyprdori-browser set brave makes it the default
 localsend-bin            # AUR
 parsec-bin

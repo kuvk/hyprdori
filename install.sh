@@ -485,7 +485,12 @@ sudo "$hyprdori/sddm/install.sh" "$autologin" >/dev/null
 # the theme's colors into it now
 tmux_theme="$HOME/.tmux/plugins/catppuccin/tmux"
 [[ -d $tmux_theme ]] || git clone -q -b v2.3.2 https://github.com/catppuccin/tmux.git "$tmux_theme"
-# The browsers' color policy helper, so the theme below colors Chromium and Brave too
+# What opens what, on a machine that has no such choices yet: the web in Chromium (the default
+# browser; hyprdori-browser set changes it), images in swayimg, PDFs in zathura, video and
+# sound in VLC. The file is the machine's own afterwards: an existing one is left as it is
+mimeapps=${XDG_CONFIG_HOME:-$HOME/.config}/mimeapps.list
+[[ -e $mimeapps ]] || install -Dm644 "$hyprdori/packages/mimeapps.list" "$mimeapps"
+# The browsers' color policy helper, so the theme below colors the Chromium-based browsers too
 sudo "$HOME/.local/bin/hyprdori-browser-theme-setup" >/dev/null
 # and the browsers' font, as answered above (no sudo: a per-user setting)
 "$HOME/.local/bin/hyprdori-browser-theme-setup" --follow-font "$browser_font" >/dev/null

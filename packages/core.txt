@@ -122,7 +122,8 @@ nodejs
 npm
 unzip
 
-# Yazi, and its previews
+# Yazi, its previews and what it opens files with (packages/mimeapps.list): images in swayimg,
+# PDFs in zathura, video and sound in VLC
 yazi
 poppler
 ffmpeg
@@ -130,7 +131,13 @@ ffmpeg
 swayimg
 zathura
 zathura-pdf-poppler
+vlc
+vlc-plugins-all          # its codecs: vlc alone plays little
 
-# Browser (the default) and the AUR helper
-brave-bin                # AUR
+# The browser: the default one, and what web apps run in (hyprdori-browser, hyprdori-webapp).
+# Another Chromium-based one installed later is colored too, and can be made the default
+chromium
+xdg-utils                # xdg-open and xdg-settings: opening files and links, the default browser
+
+# The AUR helper
 paru                     # AUR
