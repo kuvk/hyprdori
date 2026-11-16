@@ -26,16 +26,13 @@ play = [
 swayimg = [
 	{ run = "setsid -f swayimg %s >/dev/null 2>&1", desc = "swayimg", for = "linux" },
 ]
-pinta_image = [
-	{ run = "pinta %s", orphan = true, desc = "Pinta" },
-]
 
 # prepend_rules keeps yazi's own rules after these (Enter opens anything
 # else with the default app, through xdg-open). A plain `rules = [...]`
 # would replace them all.
 [open]
 prepend_rules = [
-	{ mime = "image/*", use = ["swayimg", "pinta_image", "open", "reveal"] },
+	{ mime = "image/*", use = ["swayimg", "open", "reveal"] },
 ]
 
 [plugin]

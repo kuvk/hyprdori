@@ -60,7 +60,11 @@ local function to_pdf(job)
     :stdout(Command.PIPED)
     :stderr(Command.PIPED)
     :output()
-  if not out or not out.status.success then
+  if not out then
+    -- not installed (it's optional): say so in the preview's place
+    return nil, Err("No preview: LibreOffice isn't installed")
+  end
+  if not out.status.success then
     return nil, Err("LibreOffice could not convert `%s`", file_name(job))
   end
   return dir .. (file_name(job):gsub("%.[^%.]+$", ".pdf"))
