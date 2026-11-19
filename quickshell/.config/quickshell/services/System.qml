@@ -26,7 +26,7 @@ Singleton {
     // Something is playing: idle is held off too
     readonly property bool mediaPlaying: Media.players.some(p => p.isPlaying)
 
-    // Work-Game makes the bar full width; SUPER+CTRL+B can still float it while it
+    // Work-Game makes the bar full width; SUPER+SHIFT+B can still float it while it
     // lasts, and leaving restores what it was before
     property var floatingBeforeGame: null
 

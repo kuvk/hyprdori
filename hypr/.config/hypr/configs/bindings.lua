@@ -42,8 +42,8 @@ hl.bind(mainMod .. " + SHIFT + E", hl.dsp.exec_cmd(email)) -- Email
 hl.bind(mainMod .. " + N", hl.dsp.exec_cmd(notifications)) -- Control Center
 hl.bind(mainMod .. " + space", hl.dsp.exec_cmd(menu)) -- Search apps
 hl.bind(mainMod .. " + CONTROL + space", hl.dsp.exec_cmd(appMenu)) -- App menu with categories
-hl.bind(mainMod .. " + SHIFT + B", hl.dsp.exec_cmd(bar)) -- Show / hide the bar
-hl.bind(mainMod .. " + CONTROL + B", hl.dsp.exec_cmd("qs ipc call bar floating")) -- Floating / full-width bar
+hl.bind(mainMod .. " + CONTROL + B", hl.dsp.exec_cmd(bar)) -- Show / hide the bar
+hl.bind(mainMod .. " + SHIFT + B", hl.dsp.exec_cmd("qs ipc call bar floating")) -- Floating / full-width bar
 hl.bind(mainMod .. " + CONTROL + T", hl.dsp.exec_cmd(themes)) -- Theme carousel
 hl.bind(mainMod .. " + CONTROL + M", hl.dsp.exec_cmd(displays)) -- the Displays dropdown
 hl.bind(mainMod .. " + CONTROL + S", hl.dsp.exec_cmd(settings)) -- Settings

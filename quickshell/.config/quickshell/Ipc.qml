@@ -57,7 +57,7 @@ Scope {
     IpcHandler {
         target: "bar"
 
-        // SUPER+CTRL+B: full width / floating
+        // SUPER+SHIFT+B: full width / floating
         function floating(): void {
             Config.barFloating = !Config.barFloating;
         }
