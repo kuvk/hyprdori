@@ -63,7 +63,7 @@ selection {
   color: {{ selection_foreground }};
 }
 
-/* Hyprland rounds windows itself, so they match its corners, square in Work-Game too */
+/* Hyprland rounds windows itself, so they match its corners, square in Work and Game too */
 window,
 window.csd,
 window.background,

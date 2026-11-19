@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
-# Work-Game has two modes on top of normal:
-#   Work  no animations, blur or rounding; Quickshell goes opaque with the Work-Game gaps,
+# Mode: Default, or one of two modes on top of it:
+#   Work  no animations, blur or rounding; Quickshell goes opaque with the Work and Game gaps,
 #         and live wallpapers pause
 #   Game  the same, plus a plain US keyboard (Alt and Super not swapped, as input.lua
 #         does, and no layout switching) so games get the printed keys, and Stay Awake
 #
-#   hyprdori-mode work     Work mode, or back to normal if already in it (SUPER+G)
-#   hyprdori-mode game     Game mode, or back to normal if already in it (SUPER+CTRL+G)
-#   hyprdori-mode cycle    normal, Work, Game, normal (the bar and Control Center)
-#   hyprdori-mode normal   leave either mode
+#   hyprdori-mode work     Work mode, or back to Default if already in it (SUPER+G)
+#   hyprdori-mode game     Game mode, or back to Default if already in it (SUPER+CTRL+G)
+#   hyprdori-mode cycle    Default, Work, Game, Default (the bar and Control Center)
+#   hyprdori-mode default  back to Default from either mode
 #   hyprdori-mode restyle  the mode's look again (the shell runs it after Hyprland
-#                             reloads its config, which brings back the normal look)
+#                             reloads its config, which brings back Default's look)
 #
 # $XDG_RUNTIME_DIR/hyprdori-mode holds the mode (gone at logout, as the look is); it exists in
-# both, as other scripts only check that.
+# Work and Game, as other scripts only check that.
 
 # -h, --help: the comment above, then nothing else runs
 case ${1:-} in -h | --help) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; exit 0 ;; esac
@@ -21,7 +21,7 @@ set -euo pipefail
 
 FLAG="${XDG_RUNTIME_DIR:-/tmp}/hyprdori-mode"
 
-# Keyboard: the usual layouts and options, read from input.lua, and Work-Game's
+# Keyboard: the usual layouts and options, read from input.lua, and Game's
 INPUT="$HOME/.config/hypr/configs/input.lua"
 KB_LAYOUT=$(sed -n 's/^ *kb_layout = "\([^"]*\)".*/\1/p' "$INPUT" | head -n1)
 KB_OPTIONS=$(sed -n 's/^ *kb_options = "\([^"]*\)".*/\1/p' "$INPUT" | head -n1)
@@ -42,7 +42,7 @@ current_mode() {
         mode=$(<"$FLAG")
         echo "${mode:-work}"
     else
-        echo normal
+        echo default
     fi
 }
 
@@ -92,9 +92,9 @@ set_mode() {
     current=$(current_mode)
     [[ $target == "$current" ]] && return
 
-    if [[ $target == normal ]]; then
+    if [[ $target == default ]]; then
         style_off
-    elif [[ $current == normal ]]; then
+    elif [[ $current == default ]]; then
         style_on
     fi
     if [[ $target == game ]]; then
@@ -103,7 +103,7 @@ set_mode() {
         keyboard "$KB_LAYOUT" "$KB_OPTIONS"
     fi
 
-    if [[ $target == normal ]]; then
+    if [[ $target == default ]]; then
         rm -f "$FLAG"
     else
         echo "$target" >"$FLAG"
@@ -114,25 +114,25 @@ set_mode() {
     case $target in
         work) osd modeWork "Work" ;;
         game) osd modeGame "Game" ;;
-        normal) osd modeDefault "Default" ;;
+        default) osd modeDefault "Default" ;;
     esac
 }
 
 mode=$(current_mode)
 case ${1:-work} in
-    work) [[ $mode == work ]] && set_mode normal || set_mode work ;;
-    game) [[ $mode == game ]] && set_mode normal || set_mode game ;;
+    work) [[ $mode == work ]] && set_mode default || set_mode work ;;
+    game) [[ $mode == game ]] && set_mode default || set_mode game ;;
     cycle)
         case $mode in
-            normal) set_mode work ;;
+            default) set_mode work ;;
             work) set_mode game ;;
-            *) set_mode normal ;;
+            *) set_mode default ;;
         esac
         ;;
-    normal) set_mode normal ;;
-    restyle) [[ $mode == normal ]] || style_on ;;
+    default) set_mode default ;;
+    restyle) [[ $mode == default ]] || style_on ;;
     *)
-        echo "usage: hyprdori-mode [work|game|cycle|normal|restyle]" >&2
+        echo "usage: hyprdori-mode [work|game|cycle|default|restyle]" >&2
         exit 1
         ;;
 esac

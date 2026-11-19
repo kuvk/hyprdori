@@ -13,7 +13,7 @@ Singleton {
     readonly property color weather: Weather.ready ? Theme.yellow : off
     readonly property color calendar: Theme.accent
     readonly property color stayAwake: System.stayAwake ? Theme.orange : off
-    // Work-Game: Game orange, Work magenta
+    // Mode: Game orange, Work magenta
     readonly property color mode: System.mode === "game" ? Theme.orange : System.mode === "work" ? Theme.magenta : off
     // muted dimmed, quiet magenta, medium blue, loud green
     readonly property color audio: {

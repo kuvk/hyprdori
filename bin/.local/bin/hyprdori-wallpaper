@@ -444,7 +444,7 @@ def pause(state: str | None = None) -> None:
         else:
             mpv_command(mon, ["set_property", "pause", state == "on"])
     if state is not None:
-        return  # Work-Game says so itself
+        return  # Mode says so itself (hyprdori-mode)
     reply = mpv_command(mons[0], ["get_property", "pause"])
     paused = bool(reply and reply.get("data"))
     osd("pause" if paused else "play", "Live wallpapers paused" if paused else "Live wallpapers resumed")

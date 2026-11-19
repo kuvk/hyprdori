@@ -19,7 +19,7 @@ opt.smartcase = true
 opt.termguicolors = true
 opt.background = "dark"
 opt.signcolumn = "yes"
--- Rounded floating windows, square in Work-Game (theme.lua), hover and signature help included
+-- Rounded floating windows, square in Work and Game (theme.lua), hover and signature help included
 opt.winborder = require("theme").border()
 -- Split dividers: thin lines (their color in theme.lua)
 opt.fillchars = {

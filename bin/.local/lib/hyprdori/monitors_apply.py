@@ -199,9 +199,9 @@ def apply(data: dict, live: list[dict], *, force_reload: bool = False) -> None:
         GENERATED_FILE.write_text(content)
 
     if changed or force_reload:
-        # A reload resets the runtime gamemode tweaks, so leave gamemode first
+        # A reload resets Work's or Game's look, so go back to Default first
         if GAMEMODE.exists() and GAMEMODE_SCRIPT.exists():
-            run(["bash", str(GAMEMODE_SCRIPT), "normal"])
+            run(["bash", str(GAMEMODE_SCRIPT), "default"])
         run(["hyprctl", "reload"])
 
     # Workspace rules only apply to new workspaces; move the existing ones
@@ -329,7 +329,7 @@ def reset(data: dict, live: list[dict]) -> None:
         + "\n"
     )
     if GAMEMODE.exists() and GAMEMODE_SCRIPT.exists():
-        run(["bash", str(GAMEMODE_SCRIPT), "normal"])
+        run(["bash", str(GAMEMODE_SCRIPT), "default"])
     run(["hyprctl", "reload"])
     time.sleep(1.0)  # the monitors take their new modes
     apply(data, live_monitors(), force_reload=True)

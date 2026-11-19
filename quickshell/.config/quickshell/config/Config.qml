@@ -22,7 +22,7 @@ Singleton {
     property alias cursorTheme: adapter.cursorTheme
     property alias cursorSize: adapter.cursorSize
     property alias iconTheme: adapter.iconTheme
-    // Hyprland's blur in normal mode (Work-Game has none); services/Hypr.qml
+    // Hyprland's blur in Default (Work and Game have none); services/Hypr.qml
     property alias blur: adapter.blur
     property alias animations: adapter.animations
     property alias windowButtons: adapter.windowButtons
@@ -33,8 +33,8 @@ Singleton {
     // seconds a popup stays up; critical ones stay until closed
     property alias notificationTimeout: adapter.notificationTimeout
 
-    // Style > Hyprland: windows in normal mode (fullscreen ones stay opaque), gaps normal and in
-    // Work-Game
+    // Style > Hyprland: windows in Default (fullscreen ones stay opaque), gaps in Default and in
+    // Work and Game
     property alias activeOpacity: adapter.activeOpacity
     property alias inactiveOpacity: adapter.inactiveOpacity
     property alias gapsIn: adapter.gapsIn

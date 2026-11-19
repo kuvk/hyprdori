@@ -10,7 +10,7 @@ local sep = {
   left = "\u{e0b6}",  -- rounded, opening to the right
   right = "\u{e0b4}", -- rounded, closing to the right
 }
--- Square in Work-Game or with the corner radius at 0 (theme-set --shape)
+-- Square in Work or Game or with the corner radius at 0 (theme-set --shape)
 local square = false
 local shape_file = io.open(os.getenv("HOME") .. "/.config/theme/current/shape")
 if shape_file then

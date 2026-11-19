@@ -7,7 +7,7 @@ import qs.components
 import qs.services
 import qs.modules.notifications
 
-// Quick toggles: Wi-Fi, Bluetooth, Do not disturb, Stay Awake, Mode (Work-Game), Night Light (Control Center)
+// Quick toggles: Wi-Fi, Bluetooth, Do not disturb, Stay Awake, Mode, Night Light (Control Center)
 ColumnLayout {
     Layout.fillWidth: true
     spacing: 14

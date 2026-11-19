@@ -285,7 +285,7 @@ ColumnLayout {
             }
         }
         SettingRow {
-            label: "Inner gaps in Work-Game"
+            label: "Inner gaps in Work and Game"
 
             Stepper {
                 text: `${Config.gameGapsIn} px`
@@ -293,7 +293,7 @@ ColumnLayout {
             }
         }
         SettingRow {
-            label: "Outer gaps in Work-Game"
+            label: "Outer gaps in Work and Game"
 
             Stepper {
                 text: `${Config.gameGapsOut} px`

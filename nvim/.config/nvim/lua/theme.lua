@@ -180,7 +180,7 @@ function M.apply()
   refresh_lazygit()
 end
 
--- Square corners in Work-Game or with the corner radius at 0 (theme-set --shape)
+-- Square corners in Work or Game or with the corner radius at 0 (theme-set --shape)
 function M.square()
   local file = io.open(dir .. "/shape")
   if not file then
@@ -191,7 +191,7 @@ function M.square()
   return shape == "square"
 end
 
--- Window corners: square in Work-Game or with the corner radius at 0, rounded otherwise.
+-- Window corners: square in Work or Game or with the corner radius at 0, rounded otherwise.
 -- Most windows follow vim.o.winborder; the rest are updated here. The command line,
 -- search and confirm windows (noice) and the completion menu (blink.cmp) keep their
 -- corners until Neovim restarts.

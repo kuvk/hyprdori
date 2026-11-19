@@ -9,7 +9,7 @@ RowLayout {
 
     property string label
     property string hint: ""
-    // Only used in normal mode: dimmed and locked in Work and Game
+    // Only used in Default: dimmed and locked in Work and Game
     property bool normalOnly: false
     default property alias control: holder.data
 

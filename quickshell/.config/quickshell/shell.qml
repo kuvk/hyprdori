@@ -22,7 +22,7 @@ import qs.modules.wallpaper
 import qs.modules.themes
 
 ShellRoot {
-    // Terminal status lines follow the corners: square in Work-Game or at radius 0
+    // Terminal status lines follow the corners: square in Work or Game or at radius 0
     readonly property bool squareCorners: Theme.radius === 0
 
     function applyShape(): void {

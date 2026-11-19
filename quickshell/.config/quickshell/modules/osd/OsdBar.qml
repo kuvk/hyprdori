@@ -4,7 +4,7 @@ import qs.components
 import qs.services
 
 // One OSD bar: a track and its `fill` (0..1), in the text color (greyed when the OSD's entry is
-// dim), with marks at fixed values when it has them. Rounded ends, square where the shell's corners are (radius 0, Work-Game).
+// dim), with marks at fixed values when it has them. Rounded ends, square where the shell's corners are (radius 0, Work and Game).
 Rectangle {
     id: bar
 

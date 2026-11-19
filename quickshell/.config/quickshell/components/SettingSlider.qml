@@ -19,7 +19,7 @@ ColumnLayout {
     property real step: 0.001
     // fixed values (StyledSlider's ticks)
     property int ticks: 0
-    // Only used in normal mode: dimmed and locked in Work and Game
+    // Only used in Default: dimmed and locked in Work and Game
     property bool normalOnly: false
     signal changed(real value)
 

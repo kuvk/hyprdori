@@ -59,8 +59,8 @@ hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen()) -- Fullscreen
 hl.bind(mainMod .. " + S", hl.dsp.layout("togglesplit")) -- Toggle split direction
 hl.bind(mainMod .. " + SHIFT + S", hl.dsp.exec_cmd(singleWindow)) -- Single window: a lone window keeps its shape, on / off
 hl.bind(mainMod .. " + equal", hl.dsp.exec_cmd("~/.local/bin/hyprdori-monitors")) -- Re-apply the monitor profile
-hl.bind(mainMod .. " + G", hl.dsp.exec_cmd(gamemode .. " work")) -- Work-Game: Work mode on / off
-hl.bind(mainMod .. " + CONTROL + G", hl.dsp.exec_cmd(gamemode .. " game")) -- Work-Game: Game mode on / off
+hl.bind(mainMod .. " + G", hl.dsp.exec_cmd(gamemode .. " work")) -- Mode: Work on / off
+hl.bind(mainMod .. " + CONTROL + G", hl.dsp.exec_cmd(gamemode .. " game")) -- Mode: Game on / off
 hl.bind(mainMod .. " + CONTROL + N", hl.dsp.exec_cmd(nightlight)) -- Night light
 hl.bind(mainMod .. " + slash", hl.dsp.exec_cmd(keybinds)) -- This list of keybindings
 

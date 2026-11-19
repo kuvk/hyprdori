@@ -41,7 +41,7 @@ out. After Omarchy's omarchy-theme-color and omarchy-theme-set-templates
   hyprdori-theme-set --shape rounded|square
                           corners of the status lines in tmux, nvim and yazi, Neovim's
                           windows, LazyGit, btop and the starship prompt
-                          (quickshell sets it: square in Work-Game or at radius 0)
+                          (quickshell sets it: square in Work or Game or at radius 0)
 """
 
 import json

@@ -174,7 +174,7 @@ SETTING_DEFAULTS = {
     "lockInputOpacity": 75,
     "cursorTheme": "Adwaita",
     "cursorSize": 24,
-    # Hyprland's look in normal mode (hyprland.lua.tpl)
+    # Hyprland's look in Default (hyprland.lua.tpl)
     "radius": 10,
     "gapsIn": 5,
     "gapsOut": 10,

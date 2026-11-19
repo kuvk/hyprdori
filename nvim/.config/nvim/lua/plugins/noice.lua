@@ -6,7 +6,7 @@ return {
   dependencies = { "MunifTanjim/nui.nvim" },
   opts = {
     cmdline = { view = "cmdline_popup" },
-    -- Square in Work-Game; theme.lua updates these when it changes
+    -- Square in Work and Game; theme.lua updates these when it changes
     views = {
       cmdline_popup = { border = { style = require("theme").border() } },
       -- "Save changes?" opens either this or the input window (noice picks), so they

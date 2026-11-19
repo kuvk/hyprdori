@@ -15,23 +15,23 @@ Singleton {
     property bool nightlight: false
     // Holds idle off: no idle lock or sleep (services/Idle.qml)
     property bool stayAwake: false
-    // Work-Game: "normal", "work" or "game" (hyprdori-mode reports it over IPC)
-    property string mode: "normal"
-    readonly property bool gamemode: mode !== "normal"
+    // Mode: "default", "work" or "game" (hyprdori-mode reports it over IPC)
+    property string mode: "default"
+    readonly property bool gamemode: mode !== "default"
     // For the bar's tooltip and the Control Center tile
-    readonly property string modeLabel: ({ normal: "Default", work: "Work", game: "Game" })[mode] ?? "Default"
-    readonly property string modeIcon: ({ normal: Icons.modeDefault, work: Icons.modeWork, game: Icons.modeGame })[mode] ?? Icons.modeDefault
+    readonly property string modeLabel: ({ "default": "Default", work: "Work", game: "Game" })[mode] ?? "Default"
+    readonly property string modeIcon: ({ "default": Icons.modeDefault, work: Icons.modeWork, game: Icons.modeGame })[mode] ?? Icons.modeDefault
     // Stay Awake was switched on by Game mode, so leaving it switches it off
     property bool awakeForGamemode: false
     // Something is playing: idle is held off too
     readonly property bool mediaPlaying: Media.players.some(p => p.isPlaying)
 
-    // Work-Game makes the bar full width; SUPER+SHIFT+B can still float it while it
-    // lasts, and leaving restores what it was before
+    // Switching Mode to Work or Game makes the bar full width; SUPER+SHIFT+B can
+    // still float it, returning to Default restores it to how it was set last
     property var floatingBeforeGame: null
 
     function setMode(name: string): void {
-        const on = name !== "normal";
+        const on = name !== "default";
         if (on && !gamemode) {
             floatingBeforeGame = Config.barFloating;
             Config.barFloating = false;
@@ -159,7 +159,7 @@ Singleton {
         delayedRefresh.restart();
     }
 
-    // normal, Work, Game, normal; the script reports back through `qs ipc call theme mode`
+    // Default, Work, Game, Default; the script reports back through `qs ipc call theme mode`
     function cycleMode(): void {
         Quickshell.execDetached([scripts + "hyprdori-mode", "cycle"]);
     }
@@ -220,7 +220,7 @@ Singleton {
             onStreamFinished: {
                 root.nightlight = text.includes("nightlight");
                 const found = text.match(/mode:(\w*)/);
-                root.mode = found ? (found[1] || "work") : "normal";
+                root.mode = found ? (found[1] || "work") : "default";
             }
         }
     }

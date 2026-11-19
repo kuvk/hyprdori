@@ -1,7 +1,7 @@
 -- Decoration settings. Corners, window opacity and blur are Quickshell's Settings
 -- (Appearance), written to generated/theme.lua by ~/.local/bin/hyprdori-theme-set; missing
--- there, these. Work-Game turns off blur and rounding and makes every window opaque
--- (hyprdori-mode), and leaving it runs this file again, so theme.lua is read afresh.
+-- there, these. Work and Game turn off blur and rounding and make every window opaque
+-- (hyprdori-mode), and going back to Default runs this file again, so theme.lua is read afresh.
 package.loaded["configs.generated.theme"] = nil
 local ok, theme = pcall(require, "configs.generated.theme")
 if not ok then

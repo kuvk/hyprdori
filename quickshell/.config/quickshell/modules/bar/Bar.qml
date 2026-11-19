@@ -203,7 +203,7 @@ PanelWindow {
             }
         }
 
-        // Work-Game, the current mode's icon. Click: Default, Work, Game, Default
+        // Mode, the current mode's icon. Click: Default, Work, Game, Default
         BarButton {
             sidePadding: barWindow.iconPadding
             visible: barWindow.shows("workGame")

@@ -167,7 +167,7 @@ unset_main = { fg = "{{ background }}", bg = "{{ magenta }}", bold = true }
 unset_alt  = { fg = "{{ magenta }}", bg = "{{ lighter_background }}" }
 
 # The hovered file: a bar in neo-tree's cursor line color behind it (the text keeps its own
-# color), in every column. Rounded ends, or square ones in Work-Game.
+# color), in every column. Rounded ends, or square ones in Work and Game.
 [indicator]
 parent  = { bg = "{{ cursorline }}" }
 current = { bg = "{{ cursorline }}" }

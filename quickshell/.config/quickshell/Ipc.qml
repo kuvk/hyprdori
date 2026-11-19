@@ -84,9 +84,9 @@ Scope {
             Theme.reload();
         }
 
-        // "normal", "work" or "game", from hyprdori-mode
+        // "default", "work" or "game", from hyprdori-mode
         function mode(name: string): void {
-            Theme.gamemode = name !== "normal";
+            Theme.gamemode = name !== "default";
             System.setMode(name);
         }
     }

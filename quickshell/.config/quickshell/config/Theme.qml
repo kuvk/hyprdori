@@ -68,7 +68,7 @@ Singleton {
     // controls: a hairline border while idle or hovered, none when selected
     readonly property int controlBorder: 1
 
-    // Surfaces. Gamemode turns blur off in Hyprland, so everything goes opaque.
+    // Surfaces. Work and Game turn blur off in Hyprland, so everything goes opaque.
     readonly property color barBg: alpha(background, gamemode ? 1 : Config.barOpacity)
     // Settings > Style > Shell opacity: dropdowns, the launcher, Control Center, Settings and
     // the other shell windows (Hyprland leaves them opaque, rules.lua)
@@ -125,7 +125,7 @@ Singleton {
     // Floating bar (Settings > Bar): its own margin on the left, right and
     // top (the gap below it is Hyprland's outer gap); 0 for the full-width bar
     readonly property int barMargin: Config.barFloating ? Config.barMargin : 0
-    // rounded like the other windows only while it floats (0 in Work-Game)
+    // rounded like the other windows only while it floats (0 in Work and Game)
     readonly property int barRadius: barMargin > 0 ? radius : 0
     readonly property int radius: gamemode ? 0 : Config.radius
     readonly property int smallRadius: gamemode ? 0 : Math.max(0, Config.radius - 2)
@@ -198,7 +198,7 @@ Singleton {
 
     FileView {
         path: (Quickshell.env("XDG_RUNTIME_DIR") || "/tmp") + "/hyprdori-mode"
-        // missing simply means gamemode is off
+        // missing simply means Default
         printErrors: false
         onLoaded: root.gamemode = true
         onLoadFailed: root.gamemode = false

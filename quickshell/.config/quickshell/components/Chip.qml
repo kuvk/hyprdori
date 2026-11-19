@@ -4,7 +4,7 @@ import qs.config
 import qs.services
 
 // A choice in a row of them (DNS, Wi-Fi band, power mode); a Repeater's delegate. Styled
-// like the control center's toggles: the theme's corners (square in Work-Game), a hairline border,
+// like the control center's toggles: the theme's corners (square in Work and Game), a hairline border,
 // the chosen one filled, with its label in the accent. With an icon, the icon sits above the label.
 MouseArea {
     id: chip

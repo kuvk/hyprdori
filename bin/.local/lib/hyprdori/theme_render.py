@@ -213,7 +213,7 @@ def render_starship(theme: dict) -> None:
     )
     # base.toml's own palette is the fallback; the theme's replaces it
     base = re.sub(r"\n# [^\n]*\n\[palettes\.theme\][\s\S]*$", "\n", base)
-    # square corners in Work-Game or with the corner radius at 0 (--shape)
+    # square corners in Work or Game or with the corner radius at 0 (--shape)
     if current_shape() == "square":
         base = base.replace("╭", "┌").replace("╰", "└")
     palette = "\n[palettes.theme]\n" + "".join(
