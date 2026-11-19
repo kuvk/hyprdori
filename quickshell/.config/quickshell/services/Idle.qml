@@ -129,12 +129,21 @@ Singleton {
         onTriggered: if (root.inCycle && !idleLockCheck.running) idleLockCheck.running = true
     }
 
+    // A monitor whose timeout changes while it's on never reports idle again: a new timeout (the
+    // lock or sleep time changed in Settings, the charger plugged in or out) switches it off for
+    // a moment, so it's made again with the new one.
+    property bool restarting: false
+
     IdleMonitor {
         id: monitor
 
-        enabled: root.enabled && root.started
+        enabled: root.enabled && root.started && !root.restarting
         timeout: root.enabled ? root.firstMinutes * 60 : 60
         respectInhibitors: true
+        onTimeoutChanged: {
+            root.restarting = true;
+            Qt.callLater(() => root.restarting = false);
+        }
         onIsIdleChanged: isIdle ? root.startCycle() : root.cancelCycle()
     }
 
