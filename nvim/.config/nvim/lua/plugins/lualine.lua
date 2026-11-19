@@ -92,7 +92,7 @@ local function setup()
       globalstatus = true,
     },
     sections = {
-      lualine_a = { { "mode", separator = { left = left }, right_padding = 2 } },
+      lualine_a = { { "mode", separator = { left = left, right = right } } },
       lualine_b = {
         {
           "filename",
@@ -148,7 +148,9 @@ local function setup()
         end,
       },
       lualine_z = {
-        { "location", separator = { right = right }, left_padding = 2 },
+        -- "1:1" with one space either side, as the mode has (lualine pads the line to three
+        -- digits and the column to two, which leaves short positions off-center between the caps)
+        { "location", fmt = vim.trim, separator = { left = left, right = right } },
       },
     },
     inactive_sections = {
