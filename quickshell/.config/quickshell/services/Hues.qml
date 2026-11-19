@@ -29,9 +29,9 @@ Singleton {
     readonly property color bluetooth: !Bluetooth.enabled ? off : (Bluetooth.connected.length > 0 ? Theme.blue : Theme.brightCyan)
     // no internet red, connected blue, Wi-Fi on but not connected magenta, off dimmed
     readonly property color network: Network.restricted ? Theme.red : (Network.type !== "none" ? Theme.blue : (Network.wifiEnabled ? Theme.magenta : off))
-    // charging or full cyan, then green, yellow, orange, red as it empties
+    // charging, full or plugged in cyan, then green, yellow, orange, red as it empties
     readonly property color battery: {
-        if (Battery.charging || Battery.full)
+        if (Battery.charging || Battery.full || Battery.held)
             return Theme.cyan;
         if (Battery.percent <= 0.15)
             return Theme.red;
