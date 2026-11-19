@@ -40,6 +40,14 @@ Item {
                 root.takeFocus();
         }
 
+        // after a wake; the log says whether Hyprland gave this screen's lock the keyboard
+        function onKeyboardWanted(): void {
+            if (root.preview)
+                return;
+            root.takeFocus();
+            console.info(`lock: keys taken after a wake on ${root.screen?.name}, keyboard here: ${root.Window.active}`);
+        }
+
         function onFailedChanged(): void {
             if (Lock.failed)
                 shake.restart();

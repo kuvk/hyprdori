@@ -89,6 +89,15 @@ Singleton {
         }
     }
 
+    // A wake can leave the lock typing nowhere until a click: each screen's LockView takes the
+    // keys again (hyprdori-sleep-monitor, after every wake)
+    signal keyboardWanted
+
+    function takeKeyboard(): void {
+        if (locked)
+            keyboardWanted();
+    }
+
     function checkCapsLock(): void {
         capsProc.running = true;
     }

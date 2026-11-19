@@ -2,7 +2,8 @@
 # Locks the screen before every suspend. From the power menu, the idle timer or the lid: holds a
 # logind delay inhibitor, and when logind announces a sleep (PrepareForSleep), runs
 # hyprdori-sleep-lock and lets go so the sleep goes ahead. Then takes a new inhibitor for the next
-# one. Started at login (autostart.lua); stops with Hyprland. After Omarchy's
+# one. After each wake, gives the lock screen the keyboard again (a wake can leave it typing
+# nowhere until a click). Started at login (autostart.lua); stops with Hyprland. After Omarchy's
 # omarchy-system-sleep-monitor (github.com/basecamp/omarchy, MIT).
 
 # -h, --help: the comment above, then nothing else runs
@@ -20,10 +21,36 @@ for _ in {1..50}; do
     sleep 0.1
 done
 scripts=$(dirname "$(readlink -f "$0")")
+sleep_signal="type='signal',sender='org.freedesktop.login1',interface='org.freedesktop.login1.Manager',member='PrepareForSleep'"
+
+# After every wake (PrepareForSleep false): the lock screen takes the keys, and again half a second
+# later once the screens have settled. Its own dbus-monitor, waiting on the event; outside the
+# inhibitor, whose lock every child of systemd-inhibit would hold (and so hold off the sleep).
+wake_watch() {
+    coproc wake_events { exec dbus-monitor --system "$sleep_signal"; }
+    # shellcheck disable=SC2154  # coproc sets wake_events_PID
+    trap 'kill "$wake_events_PID" 2>/dev/null' EXIT
+    while hyprland_alive; do
+        if read -r -t 5 line <&"${wake_events[0]}"; then
+            [[ $line == *"boolean false"* ]] || continue
+            timeout 1 qs ipc call lock focus >/dev/null 2>&1
+            sleep 0.5
+            timeout 1 qs ipc call lock focus >/dev/null 2>&1
+        elif (($? <= 128)); then
+            return # dbus-monitor ended: start over
+        fi
+    done
+}
 
 if [[ ${1:-} != --inhibited ]]; then
     exec 9>"$XDG_RUNTIME_DIR/sleep-monitor.lock"
     flock -n 9 || exit 0 # one per session
+    (
+        while hyprland_alive; do
+            wake_watch
+            sleep 1
+        done
+    ) 9>&- &
     while hyprland_alive; do
         systemd-inhibit --what=sleep --mode=delay --who=Quickshell \
             --why="Lock the screen before sleeping" "$0" --inhibited
@@ -34,8 +61,7 @@ fi
 
 # Inside the inhibitor: wait for the sleep, lock, exit (which releases the inhibitor)
 coproc events {
-    exec dbus-monitor --system \
-        "type='signal',sender='org.freedesktop.login1',interface='org.freedesktop.login1.Manager',member='PrepareForSleep'"
+    exec dbus-monitor --system "$sleep_signal"
 }
 # shellcheck disable=SC2154  # coproc sets events_PID
 trap 'kill "$events_PID" 2>/dev/null' EXIT

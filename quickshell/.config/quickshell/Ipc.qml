@@ -107,6 +107,11 @@ Scope {
         function status(): string {
             return JSON.stringify({ requested: Lock.locked, secure: Lock.secure });
         }
+
+        // after a wake (hyprdori-sleep-monitor): the lock screen takes the keys again
+        function focus(): void {
+            Lock.takeKeyboard();
+        }
     }
 
     IpcHandler {
