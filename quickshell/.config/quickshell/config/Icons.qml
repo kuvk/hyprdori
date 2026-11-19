@@ -28,6 +28,10 @@ Singleton {
     readonly property string keyboard: g(0xf11c)
     readonly property string coffee: g(0xf0f4)
     readonly property string rocket: g(0xf135)
+    // Work-Game's three modes
+    readonly property string modeDefault: g(0xf1104)
+    readonly property string modeWork: g(0xf0a07)
+    readonly property string modeGame: rocket
     readonly property string bolt: g(0xf0e7)
     readonly property string sliders: g(0xf1de)
     readonly property string calendar: g(0xf00ed)

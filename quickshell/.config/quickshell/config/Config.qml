@@ -108,7 +108,7 @@ Singleton {
         { id: "media", label: "Media player" },
         { id: "tray", label: "System tray" },
         { id: "stayAwake", label: "Stay Awake" },
-        { id: "workGame", label: "Work-Game" },
+        { id: "workGame", label: "Mode" },
         { id: "audio", label: "Volume" },
         { id: "bluetooth", label: "Bluetooth" },
         { id: "network", label: "Network" },

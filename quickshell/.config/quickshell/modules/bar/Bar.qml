@@ -203,17 +203,17 @@ PanelWindow {
             }
         }
 
-        // Click: normal, Work, Game, normal
+        // Work-Game, the current mode's icon. Click: Default, Work, Game, Default
         BarButton {
             sidePadding: barWindow.iconPadding
             visible: barWindow.shows("workGame")
-            tooltip: `Work-Game: ${System.modeLabel}`
+            tooltip: `Mode: ${System.modeLabel}`
             onClicked: System.cycleMode()
 
             Icon {
                 font.pixelSize: Theme.barIconSize
                 width: barWindow.iconSlot
-                text: Icons.rocket
+                text: System.modeIcon
                 color: Hues.mode
             }
         }

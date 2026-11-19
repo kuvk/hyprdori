@@ -112,9 +112,9 @@ set_mode() {
     qs ipc call theme mode "$target" >/dev/null 2>&1 || true
 
     case $target in
-        work) osd rocket "Work" ;;
-        game) osd gamepad "Game" ;;
-        normal) osd rocket "Off" ;;
+        work) osd modeWork "Work" ;;
+        game) osd modeGame "Game" ;;
+        normal) osd modeDefault "Default" ;;
     esac
 }
 

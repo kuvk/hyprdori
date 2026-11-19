@@ -7,7 +7,7 @@ import qs.components
 import qs.services
 import qs.modules.notifications
 
-// Quick toggles: Wi-Fi, Bluetooth, Do not disturb, Stay Awake, Work-Game, Night Light (Control Center)
+// Quick toggles: Wi-Fi, Bluetooth, Do not disturb, Stay Awake, Mode (Work-Game), Night Light (Control Center)
 ColumnLayout {
     Layout.fillWidth: true
     spacing: 14
@@ -49,8 +49,8 @@ ColumnLayout {
         }
 
         QuickToggle {
-            icon: Icons.rocket
-            label: "Work-Game"
+            icon: System.modeIcon
+            label: "Mode"
             sublabel: System.modeLabel
             checked: System.gamemode
             onClicked: System.cycleMode()

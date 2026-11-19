@@ -19,7 +19,8 @@ Singleton {
     property string mode: "normal"
     readonly property bool gamemode: mode !== "normal"
     // For the bar's tooltip and the Control Center tile
-    readonly property string modeLabel: ({ normal: "Off", work: "Work", game: "Game" })[mode] ?? "Off"
+    readonly property string modeLabel: ({ normal: "Default", work: "Work", game: "Game" })[mode] ?? "Default"
+    readonly property string modeIcon: ({ normal: Icons.modeDefault, work: Icons.modeWork, game: Icons.modeGame })[mode] ?? Icons.modeDefault
     // Stay Awake was switched on by Game mode, so leaving it switches it off
     property bool awakeForGamemode: false
     // Something is playing: idle is held off too
