@@ -207,7 +207,7 @@ PanelWindow {
         BarButton {
             sidePadding: barWindow.iconPadding
             visible: barWindow.shows("workGame")
-            tooltip: `Mode: ${System.modeLabel}`
+            tooltip: System.modeLabel
             onClicked: System.cycleMode()
 
             Icon {
