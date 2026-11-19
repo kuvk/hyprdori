@@ -4,12 +4,21 @@
     "hackerman": "sapphire",
     "nord": "sapphire"
   },
-  "activeOpacity": 0.95,
+  "activeOpacity": 0.986,
   "animations": true,
-  "barFloating": false,
-  "barHidden": {},
+  "barFloating": true,
+  "barHidden": {
+    "HDMI-A-1": [
+      "displays",
+      "power"
+    ],
+    "eDP-1": [
+      "displays",
+      "power"
+    ]
+  },
   "barMargin": 6,
-  "barOpacity": 0.93,
+  "barOpacity": 0.986,
   "blur": true,
   "borderWidth": 2,
   "cava": true,
@@ -30,7 +39,7 @@
   "idleLockBattery": 3,
   "idleSuspend": 20,
   "idleSuspendBattery": 10,
-  "inactiveOpacity": 0.88,
+  "inactiveOpacity": 0.968,
   "lockAvatar": false,
   "lockFollowsTheme": true,
   "lockImage": "",
@@ -42,12 +51,12 @@
   "nightlightStart": "20:00",
   "nightlightTemperature": 4500,
   "notificationTimeout": 5,
-  "radius": 10,
-  "shellOpacity": 0.93,
+  "radius": 8,
+  "shellOpacity": 0.986,
   "trayKeepColors": "",
   "trayMonochrome": false,
   "trayTint": false,
-  "wallpaperFollowsTheme": true,
+  "wallpaperFollowsTheme": false,
   "weatherFahrenheit": false,
   "weatherLocation": "",
   "windowButtons": false

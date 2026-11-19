@@ -194,8 +194,8 @@ Singleton {
 
             // Style > System
             property var accentOverrides: ({})
-            property bool wallpaperFollowsTheme: true
-            property int radius: 10
+            property bool wallpaperFollowsTheme: false
+            property int radius: 8
             property int borderWidth: 2
             property string cursorTheme: "Adwaita"
             property int cursorSize: 24
@@ -205,13 +205,13 @@ Singleton {
             property bool windowButtons: false
 
             // Style > Shell
-            property real barOpacity: 0.93
-            property real shellOpacity: 0.93
+            property real barOpacity: 0.986
+            property real shellOpacity: 0.986
             property int notificationTimeout: 5
 
             // Style > Hyprland
-            property real activeOpacity: 0.95
-            property real inactiveOpacity: 0.88
+            property real activeOpacity: 0.986
+            property real inactiveOpacity: 0.968
             property int gapsIn: 5
             property int gapsOut: 10
             property int gameGapsIn: 2
@@ -232,7 +232,7 @@ Singleton {
             property string fontAntialiasing: "rgba"
 
             // Bar > General
-            property bool barFloating: false
+            property bool barFloating: true
             property int barMargin: 6
             property string clockFormat: "dddd HH:mm"
             property string weatherLocation: ""

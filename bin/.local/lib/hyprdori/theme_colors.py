@@ -167,7 +167,7 @@ SETTING_DEFAULTS = {
     "fontHinting": "slight",
     "fontAntialiasing": "rgba",
     "windowButtons": False,
-    "wallpaperFollowsTheme": True,
+    "wallpaperFollowsTheme": False,
     "lockAvatar": False,
     "lockPowerOpacity": 85,
     "accentOverrides": {},
@@ -175,11 +175,11 @@ SETTING_DEFAULTS = {
     "cursorTheme": "Adwaita",
     "cursorSize": 24,
     # Hyprland's look in Default (hyprland.lua.tpl)
-    "radius": 10,
+    "radius": 8,
     "gapsIn": 5,
     "gapsOut": 10,
-    "activeOpacity": 0.95,
-    "inactiveOpacity": 0.88,
+    "activeOpacity": 0.986,
+    "inactiveOpacity": 0.968,
     "blur": True,
     "iconTheme": "Papirus",
 }

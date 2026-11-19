@@ -10,10 +10,10 @@ end
 
 hl.config({
   decoration = {
-    rounding = theme.rounding or 6,
+    rounding = theme.rounding or 8,
     rounding_power = 2,
-    active_opacity = theme.active_opacity or 0.95,
-    inactive_opacity = theme.inactive_opacity or 0.88,
+    active_opacity = theme.active_opacity or 0.986,
+    inactive_opacity = theme.inactive_opacity or 0.968,
     fullscreen_opacity = 1.0,
 
     -- no shadows anywhere
