@@ -15,7 +15,8 @@
 # Kernel options come from /etc/kernel/cmdline (made from the running system's on first run).
 # At boot, E on an entry edits its options for that boot only.
 #
-# The menu is /efi/limine.conf (Limine's last place to look, so nothing may sit in EFI/limine).
+# The menu is /efi/limine.conf (Limine's last place to look, so nothing may sit in EFI/limine or
+# EFI/BOOT, where Limine's fallback copy is: the one firmware starts without boot entries).
 # It's written whole, so entries added there are lost: other systems' entries (Windows, another
 # distro, the UEFI shell) go in /etc/hyprdori/limine-entries.conf, added as written below the
 # Arch Linux ones (which stay the default). install.sh makes that file, with only comments, from
@@ -214,6 +215,16 @@ fi
 conf=$(config)
 wallpaper "$build/wallpaper.png"
 install -D -m 0644 /usr/share/limine/BOOTX64.EFI "$esp/EFI/limine/BOOTX64.EFI"
+# The same at the path firmware starts when it has no boot entries (lost to a firmware update or
+# reset, or another system's install). Only where nothing else is there: another system's own
+# fallback loader on this ESP stays.
+fallback="$esp/EFI/BOOT/BOOTX64.EFI"
+if [[ ! -e $fallback ]] || grep -qa 'Limine' "$fallback"; then
+    install -D -m 0644 /usr/share/limine/BOOTX64.EFI "$fallback"
+    rm -f "$esp/EFI/BOOT/limine.conf"
+else
+    echo "$fallback is another loader's; left as it is" >&2
+fi
 install -m 0644 "$build/wallpaper.png" "$esp/EFI/limine/"
 printf '%s\n' "$conf" >"$esp/limine.conf"
 # Limine reads the one next to its EFI file first: none there, so it reads /efi/limine.conf
