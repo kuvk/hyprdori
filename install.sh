@@ -127,7 +127,7 @@ services_for() {
         $laptop && services+=(nvidia-powerd)
     fi
     [[ " ${groups[*]} " == *" desktop "* ]] && services+=(coolercontrold)
-    $guest && services+=(qemu-guest-agent)
+    $guest && services+=(qemu-guest-agent spice-vdagentd)
     [[ " ${groups[*]} " == *" vm "* ]] && services+=(libvirtd docker.socket)
     printf '%s\n' "${services[@]}"
 }
@@ -206,8 +206,9 @@ has_gpu() { [[ " ${gpus[*]} " == *" $1 "* ]]; }
 laptop=false asus_laptop=false
 "$hw" laptop && laptop=true
 "$hw" asus && asus_laptop=true
-# Inside a virtual machine (a test install): its GPU's Vulkan and the guest agent, and no for
-# the questions about real hardware and running VMs
+# Inside a virtual machine (a test install): its GPU's Vulkan, the guest agent, Spice's clipboard
+# daemon (spice-vdagentd, enabled too in case udev doesn't start it), and no for the questions
+# about real hardware and running VMs
 guest=false
 "$hw" vm && guest=true
 

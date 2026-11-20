@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # What else starts at login. autostart.lua runs this once: clipboard history, the snapshot
-# notifications, Spotify's theme setup (hyprdori-spicetify) and ROG Control Center when
-# installed; more can be added below. Running it again would start them twice.
+# notifications, Spotify's theme setup (hyprdori-spicetify), the VM clipboard bridge and ROG
+# Control Center when installed; more can be added below. Running it again would start them twice.
 #
 #   hyprdori-autostart
 
@@ -50,13 +50,10 @@ fi
     command -v spicetify >/dev/null && "$HOME/.local/bin/hyprdori-spicetify" &
 ) &
 
-# In a virtual machine: the clipboard shared with the host (virt-manager's Spice). The agent
-# speaks X11 only, so it works through Xwayland, whose clipboard Hyprland shares with Wayland apps:
-# text both ways. Its daemon starts by itself when the VM's Spice channel is there.
+# In a virtual machine: the clipboard shared with the host (virt-manager's Spice).
 if command -v spice-vdagent >/dev/null && "$HOME/.local/bin/hyprdori-hw" vm; then
-    GDK_BACKEND=x11 spice-vdagent
-    # and between X11 and Wayland apps, which Hyprland's bridge doesn't carry in a VM: the
-    # host's text reaches every app (remove this line to go without)
+    # The clipboard between X11 and Wayland apps, which Hyprland's bridge doesn't carry in a
+    # VM: the host's text reaches every app (remove this line to go without)
     command -v clipnotify >/dev/null && "$HOME/.local/bin/hyprdori-vm-clipboard" &
 fi
 
