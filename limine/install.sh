@@ -16,6 +16,9 @@
 # At boot, E on an entry edits its options for that boot only.
 #
 # The menu is /efi/limine.conf (Limine's last place to look, so nothing may sit in EFI/limine).
+# It's written whole, so entries added there are lost: other systems' entries (Windows, another
+# distro, the UEFI shell) go in /etc/hyprdori/limine-entries.conf, added as written below the
+# Arch Linux ones (which stay the default).
 # With snapshots (a btrfs root and limine-snapper-sync, set up by install.sh) the Arch Linux
 # entry gets a Snapshots folder, which limine-snapper-sync fills: it's filled again after
 # every rewrite here.
@@ -90,6 +93,18 @@ mapfile -t found < <(found_kernels)
 snapshots=false
 [[ $(findmnt -no FSTYPE / 2>/dev/null) == btrfs ]] && command -v limine-snapper-sync >/dev/null && snapshots=true
 ((${#found[@]})) || { echo "No kernels with images in $kernels" >&2; exit 1; }
+
+# This machine's other entries: only entries (a /Name line, its indented options), comments and
+# blank lines, as a menu option there would change the whole menu
+extra=/etc/hyprdori/limine-entries.conf
+if [[ -r $extra ]]; then
+    bad=$(grep -n -v -E '^[[:space:]]*(#.*)?$|^/+[^/[:space:]]|^[[:space:]]+[a-z_]+:' "$extra" || true)
+    if [[ -n $bad ]]; then
+        echo "$extra: only entries (/Name, then indented options), comments and blank lines:" >&2
+        echo "$bad" >&2
+        exit 1
+    fi
+fi
 
 # The resolution: given, or the first connected screen's native mode on the boot display's
 # card (the one the firmware, and so Limine, draws on)
@@ -178,6 +193,10 @@ EOF
     done
     # where limine-snapper-sync puts an entry per snapshot
     $snapshots && echo "//Snapshots"
+    if [[ -r $extra ]]; then
+        printf '\n# Other systems, from %s\n' "$extra"
+        cat "$extra"
+    fi
     return 0
 }
 
