@@ -630,6 +630,11 @@ EOF
     if [[ $cmdline == *rd.luks.name=* ]]; then
         extra+=(rd.luks.options=timeout=90s,tries=3 systemd.default_device_timeout_sec=infinity)
     fi
+    # Boot hangs with Plymouth: since kernel 7.1 the initramfs is unpacked while /init already
+    # runs, which can make Plymouth quit (the disk password asked in plain text); since systemd
+    # 257 it asks the console its size and can wait for a reply that never comes under Plymouth
+    # (a black screen at "Starting Switch Root" until a key is pressed)
+    extra+=(initramfs_async=0 systemd.tty.term.console=dumb)
     for option in "${extra[@]}"; do
         [[ " $cmdline " == *" ${option%%=*}="* || " $cmdline " == *" $option "* ]] || cmdline+=" $option"
     done
