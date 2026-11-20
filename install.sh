@@ -179,6 +179,8 @@ dry_report() {
         echo "The initramfs doesn't use the systemd hook: Plymouth and Limine would be skipped."
     else
         echo "The initramfs, the kernel options, Plymouth and Limine would be set up."
+        [[ -e /etc/hyprdori/limine-entries.conf ]] ||
+            echo "Would make /etc/hyprdori/limine-entries.conf (other systems' boot entries; only comments)"
     fi
     echo
     echo "Nothing was changed."
@@ -633,6 +635,11 @@ EOF
     done
     echo "$cmdline" | sudo tee /etc/kernel/cmdline >/dev/null
     echo "Kernel options: $cmdline"
+
+    # Other systems' boot menu entries (Windows, another distro, the UEFI shell) go in this
+    # file, kept when the menu is written again; made once, with only comments and an example
+    [[ -e /etc/hyprdori/limine-entries.conf ]] ||
+        sudo install -D -m 0644 "$hyprdori/limine/limine-entries.conf" /etc/hyprdori/limine-entries.conf
 
     # Plymouth builds the initramfs, Limine then finds the kernels in /efi/arch
     sudo "$hyprdori/plymouth/install.sh" --theme

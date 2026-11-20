@@ -18,7 +18,8 @@
 # The menu is /efi/limine.conf (Limine's last place to look, so nothing may sit in EFI/limine).
 # It's written whole, so entries added there are lost: other systems' entries (Windows, another
 # distro, the UEFI shell) go in /etc/hyprdori/limine-entries.conf, added as written below the
-# Arch Linux ones (which stay the default).
+# Arch Linux ones (which stay the default). install.sh makes that file, with only comments, from
+# limine/limine-entries.conf; with no entry in it the menu is the same as without it.
 # With snapshots (a btrfs root and limine-snapper-sync, set up by install.sh) the Arch Linux
 # entry gets a Snapshots folder, which limine-snapper-sync fills: it's filled again after
 # every rewrite here.
@@ -193,7 +194,7 @@ EOF
     done
     # where limine-snapper-sync puts an entry per snapshot
     $snapshots && echo "//Snapshots"
-    if [[ -r $extra ]]; then
+    if [[ -r $extra ]] && grep -q '^/' "$extra"; then
         printf '\n# Other systems, from %s\n' "$extra"
         cat "$extra"
     fi
