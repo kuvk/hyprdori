@@ -35,6 +35,15 @@ Singleton {
     // the mouse moves to (LockView), as on the login screen
     property string mainScreen: ""
 
+    // The mouse moved onto a monitor (LockView): the avatar and password follow it. Not for 2 s
+    // after the monitors change: a wake drops and brings back monitors, and Hyprland moving the
+    // pointer off a vanished one would otherwise keep the password on another screen once it's
+    // back (it shows on the first screen meanwhile, LockView.main).
+    function followPointer(name: string): void {
+        if (locked && !screensSettling.running)
+            mainScreen = name;
+    }
+
     // The background: the theme's own (Theme.backgroundImage, hyprdori-theme-set) unless the user chose an
     // image in Settings > Style > Lock screen (the theme's when that can't be read). Whenever it
     // changes, `hyprdori-wallpaper lock` makes it ready to load at once (a copy scaled to the
@@ -115,7 +124,14 @@ Singleton {
 
         function onScreensChanged(): void {
             root.prepareBackground();
+            screensSettling.restart();
         }
+    }
+
+    Timer {
+        id: screensSettling
+
+        interval: 2000
     }
 
     Process {

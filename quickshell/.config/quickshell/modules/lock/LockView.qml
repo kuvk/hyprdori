@@ -114,13 +114,13 @@ Item {
             hoverEnabled: !root.preview
             cursorShape: idle ? Qt.BlankCursor : Qt.ArrowCursor
             onClicked: root.takeFocus()
-            // the avatar and password come to the monitor the mouse is on
-            onEntered: if (!root.preview && Lock.locked) Lock.mainScreen = root.screen.name
+            // the avatar and password come to the monitor the mouse is on (Lock.followPointer)
+            onEntered: if (!root.preview) Lock.followPointer(root.screen.name)
             onPositionChanged: {
                 idle = false;
                 idleTimer.restart();
-                if (!root.preview && Lock.locked)
-                    Lock.mainScreen = root.screen.name;
+                if (!root.preview)
+                    Lock.followPointer(root.screen.name);
             }
 
             Timer {
