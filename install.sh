@@ -313,7 +313,14 @@ if ! command -v paru >/dev/null; then
     echo "Building paru from the AUR"
     build=$(mktemp -d)
     git clone --depth 1 https://aur.archlinux.org/paru.git "$build/paru"
-    (cd "$build/paru" && makepkg -si --needed --noconfirm)
+    # Its build tools and the package go in through sudo here, which still has the password:
+    # makepkg's own installs (-s, -i) run sudo -k, which asks for it again
+    mapfile -t deps < <(cd "$build/paru" && makepkg --printsrcinfo |
+        sed -n -E 's/^\t(make|check)?depends = //p' | sed -E 's/[<>=].*//' | sort -u)
+    ((${#deps[@]})) && sudo pacman -S --needed --noconfirm --asdeps "${deps[@]}"
+    (cd "$build/paru" && makepkg --noconfirm)
+    # paru's package, not the paru-debug one makepkg also builds
+    sudo pacman -U --noconfirm "$build"/paru/paru-[0-9]*.pkg.tar.zst
     rm -rf "$build"
 fi
 mapfile -t wanted < <(wanted_packages)
