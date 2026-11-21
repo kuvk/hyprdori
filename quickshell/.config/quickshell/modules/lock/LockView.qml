@@ -154,10 +154,15 @@ Item {
             width: 139
             height: 139
 
+            // in the password field's style: its background and 2 px outline (the outline drawn
+            // inside, so the picture fills it to the outline as before); a transparent picture
+            // shows that background, not a filled circle
             Rectangle {
                 anchors.fill: parent
                 radius: width / 2
-                color: Theme.border
+                color: field.color
+                border.width: 2
+                border.color: Theme.border
             }
 
             Image {
@@ -198,7 +203,7 @@ Item {
                 anchors.centerIn: parent
                 visible: avatar.status !== Image.Ready
                 text: "\u{f0004}"
-                color: Theme.background
+                color: Theme.border
                 font.family: Theme.iconFont
                 font.pixelSize: 56
             }

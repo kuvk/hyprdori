@@ -105,10 +105,15 @@ Rectangle {
             implicitWidth: 139
             implicitHeight: 139
 
+            // in the password field's style: its background and 2 px outline (the outline drawn
+            // inside, so the picture fills it to the outline as before); a transparent picture
+            // shows that background, not a filled circle
             Rectangle {
                 anchors.fill: parent
                 radius: width / 2
-                color: root.c.avatar
+                color: field.color
+                border.width: 2
+                border.color: root.c.avatar
             }
 
             Image {
@@ -148,7 +153,7 @@ Rectangle {
                 anchors.centerIn: parent
                 visible: avatar.status !== Image.Ready
                 text: "\u{f0004}"
-                color: root.c.base
+                color: root.c.avatar
                 font.family: root.c.iconFont
                 font.pixelSize: 56
             }
