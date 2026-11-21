@@ -325,12 +325,30 @@ if ! command -v paru >/dev/null; then
 fi
 mapfile -t wanted < <(wanted_packages)
 # paru installs repo and AUR packages alike, and asks once. When that fails (an AUR package
-# that doesn't build), the rest go one at a time and the failures are listed: the install goes on
+# that doesn't build), the missing ones go again and the failures are listed: the install goes on.
+# The repos' together: a dependency more than one package can fill (jack: pipewire-jack or jack2)
+# is then filled by the one in the lists. One at a time with --noconfirm, pacman would take the
+# first provider (jack2), which then blocks the listed one; when they must go one at a time, the
+# ones that provide something go first, together. The AUR's after them, one at a time.
 if ! paru -Syu --needed "${wanted[@]}"; then
-    note "Not everything installed; trying the missing packages one at a time"
-    failed=()
+    note "Not everything installed; trying the missing packages again"
+    repo=() providers=() aur=() failed=()
     for pkg in "${wanted[@]}"; do
         pacman -Q "$pkg" &>/dev/null && continue
+        if info=$(pacman -Si -- "$pkg" 2>/dev/null); then
+            if grep -qE '^Provides +: [^N]' <<<"$info"; then providers+=("$pkg"); else repo+=("$pkg"); fi
+        else
+            aur+=("$pkg")
+        fi
+    done
+    if ((${#providers[@]} + ${#repo[@]})) && ! sudo pacman -S --needed --noconfirm "${providers[@]}" "${repo[@]}"; then
+        ((${#providers[@]})) && sudo pacman -S --needed --noconfirm "${providers[@]}" || true
+        for pkg in "${providers[@]}" "${repo[@]}"; do
+            pacman -Q "$pkg" &>/dev/null && continue
+            sudo pacman -S --needed --noconfirm "$pkg" || failed+=("$pkg")
+        done
+    fi
+    for pkg in "${aur[@]}"; do
         paru -S --needed --noconfirm "$pkg" || failed+=("$pkg")
     done
     if ((${#failed[@]})); then
