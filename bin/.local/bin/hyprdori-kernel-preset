@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# Moves a kernel installed later onto the boot menu. A kernel package's install writes the stock
+# mkinitcpio preset, which puts the kernel and its image in /boot, where Limine can't read them
+# (it reads only the ESP). This writes the preset install.sh writes (kernel and image in
+# /efi/arch), copies the kernel there, builds the image, removes the copies in /boot, and writes
+# the boot menu again (limine/install.sh, with the options it was installed with). Install the
+# kernel's -headers package first where DKMS modules (NVIDIA's) must be built for it.
+#
+#   hyprdori-kernel-preset            every installed kernel whose preset isn't Hyprdori's yet,
+#                                     and the menu written again if a kernel in /efi/arch is
+#                                     missing from it (a kernel reinstalled gets its old preset
+#                                     back from pacman's .pacsave, so it's already there)
+#   hyprdori-kernel-preset KERNEL...  these (package names: linux-zen, linux-g14, ...), again too
+#
+# Asks for the password (sudo). Each image is about 150 MB with NVIDIA's modules; it stops when
+# the ESP lacks the room.
+
+# -h, --help: the comment above, then nothing else runs
+case ${1:-} in -h | --help) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; exit 0 ;; esac
+set -euo pipefail
+
+hyprdori=$(cd "$(dirname "$(readlink -f "$0")")/../../.." && pwd)
+esp=/efi
+kernels=$esp/arch
+conf=$esp/limine.conf
+
+mountpoint -q "$esp" || { echo "The ESP isn't mounted at $esp" >&2; exit 1; }
+
+# The kernel file of an installed kernel package, from its module folder's pkgbase
+kernel_file() {
+    local base
+    for base in /usr/lib/modules/*/pkgbase; do
+        [[ $(<"$base") == "$1" ]] && { echo "${base%/pkgbase}/vmlinuz"; return 0; }
+    done
+    return 1
+}
+
+if (($#)); then
+    wanted=("$@")
+else
+    wanted=()
+    for base in /usr/lib/modules/*/pkgbase; do
+        name=$(<"$base")
+        grep -qs "^ALL_kver=\"$kernels/" "/etc/mkinitcpio.d/$name.preset" || wanted+=("$name")
+    done
+fi
+# The kernels in /efi/arch with an image, and the menu's kernel entries (//name, not the
+# Snapshots folder): hyprdori-update compares the same
+on_esp=$(for k in "$kernels"/vmlinuz-*; do [[ -e $kernels/initramfs-${k#*/vmlinuz-}.img ]] && echo "${k#*/vmlinuz-}"; done | sort | tr '\n' ' ')
+in_menu=$(sed -n 's|^//\([^/]\)|\1|p' "$conf" 2>/dev/null | grep -vx Snapshots | sort | tr '\n' ' ')
+if ((${#wanted[@]} == 0)) && [[ $on_esp == "$in_menu" ]]; then
+    echo "Every installed kernel is on the boot menu already."
+    exit 0
+fi
+for name in "${wanted[@]}"; do
+    kernel_file "$name" >/dev/null || { echo "$name: no such kernel installed (pacman -S $name)" >&2; exit 1; }
+done
+
+# Room on the ESP: about 200 MB a kernel (the kernel, an image with NVIDIA's modules)
+free_mb=$(($(df --output=avail -k "$esp" | tail -1) / 1024))
+need_mb=$((${#wanted[@]} * 200))
+if ((free_mb < need_mb)); then
+    echo "The ESP has ${free_mb} MB free, ${need_mb} MB needed for: ${wanted[*]}" >&2
+    exit 1
+fi
+
+sudo -v
+for name in "${wanted[@]+"${wanted[@]}"}"; do
+    preset=/etc/mkinitcpio.d/$name.preset
+    [[ -e $preset ]] && sudo cp -n "$preset" "$preset.bak"
+    sudo tee "$preset" >/dev/null <<EOF
+# mkinitcpio preset for $name; the kernel and image go to the ESP (hyprdori-kernel-preset)
+ALL_kver="$kernels/vmlinuz-$name"
+PRESETS=('default')
+default_image="$kernels/initramfs-$name.img"
+EOF
+    sudo install -D -m 0644 "$(kernel_file "$name")" "$kernels/vmlinuz-$name"
+    sudo mkinitcpio -p "$name"
+    sudo rm -f "/boot/vmlinuz-$name" "/boot/initramfs-$name.img" "/boot/initramfs-$name-fallback.img"
+    echo "$name: kernel and image in $kernels"
+done
+
+# The menu again, so it lists them
+if grep -qs 'Written by limine/install.sh' "$conf"; then
+    read -ra options <<<"$(sed -n 's/^# Options: //p' "$conf")"
+    sudo "$hyprdori/limine/install.sh" "${options[@]}"
+else
+    echo "No boot menu written by limine/install.sh; add the kernels to it yourself." >&2
+fi

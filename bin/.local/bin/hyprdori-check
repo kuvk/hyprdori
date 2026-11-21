@@ -29,6 +29,16 @@ stow_list() { grep -o '^not_stowed=([^)]*)' "$1"; }
 [[ $(stow_list install.sh) == "$(stow_list bin/.local/bin/hyprdori-update)" ]] ||
     fail "not_stowed differs between install.sh and bin/.local/bin/hyprdori-update"
 
+# The mkinitcpio preset that puts a kernel and its image on the ESP: the same in install.sh and
+# hyprdori-kernel-preset (their variables named alike: the kernel, the ESP's kernel folder)
+preset_lines() {
+    grep -E '^(ALL_kver|PRESETS|default_image)=' "$1" |
+        sed -e 's/\$kernels/\/efi\/arch/g' -e 's/\$kernel\b/KERNEL/g' -e 's/\$name\b/KERNEL/g'
+}
+presets_install=$(preset_lines install.sh)
+[[ -n $presets_install && $presets_install == "$(preset_lines bin/.local/bin/hyprdori-kernel-preset)" ]] ||
+    fail "the kernel preset differs between install.sh and bin/.local/bin/hyprdori-kernel-preset"
+
 # Files by kind, from their first line or extension
 shell=() python=() lua=() data=() qml=()
 for file in "${tracked[@]}"; do
