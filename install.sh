@@ -49,29 +49,8 @@ ask() {
 }
 # Package names from a list: comments and blank lines dropped
 list() { sed 's/#.*//; s/[[:space:]]//g; /^$/d' "$hyprdori/packages/$1.txt"; }
-# Where an extra package (~/.config/hyprdori/user_pkg.txt) comes from: the repos (pacman's, or
-# archlinux.org's for a repo not enabled yet, such as multilib), the AUR or Flathub; nothing
-# printed when it's in none of them (or the lookup can't be made). Flathub IDs (two dots or more)
-# are tried there first.
 # A Flathub app ID (com.example.App: two dots or more), as against a package's name
 is_flathub() { [[ $1 =~ ^[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z0-9_-]+){2,}$ ]]; }
-source_of() {
-    local name=$1
-    on_flathub() { [[ $(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://flathub.org/api/v2/appstream/$name") == 200 ]]; }
-    if is_flathub "$name" && on_flathub; then
-        echo flatpak
-    elif pacman -Si -- "$name" &>/dev/null ||
-        curl -fsS --max-time 10 --get --data-urlencode "name=$name" https://archlinux.org/packages/search/json/ 2>/dev/null |
-        grep -qF "\"pkgname\": \"$name\""; then
-        echo repo
-    elif curl -fsS --max-time 10 --get --data-urlencode "arg[]=$name" https://aur.archlinux.org/rpc/v5/info 2>/dev/null |
-        grep -q '"resultcount":[1-9]'; then
-        echo aur
-    elif on_flathub; then
-        echo flatpak
-    fi
-    return 0
-}
 # Files where a link should go, which aren't links into Hyprdori already: their paths under the
 # home folder, each ended by a NUL
 in_the_way() {
@@ -86,20 +65,19 @@ in_the_way() {
         done < <(find "$hyprdori/$name" \( -type f -o -type l \) -print0)
     done
 }
-# Every package of the chosen lists and the extra ones, once each. A list may name Flathub apps
-# next to packages (gaming.txt): those are wanted_flatpaks'
+# Every package of the chosen lists, once each. A list may name Flathub apps next to packages
+# (gaming.txt): those are wanted_flatpaks'
 wanted_packages() {
     local name
     {
         for group in "${groups[@]}"; do
             while read -r name; do is_flathub "$name" || echo "$name"; done < <(list "$group")
         done
-        ((${#user_native[@]})) && printf '%s\n' "${user_native[@]}"
     } | sort -u
 }
 # The packages the config can't do without: core.txt and the lists the hardware picked (the GPU's
 # driver, a virtual machine's agent). Without one of them the install stops after the packages;
-# the lists that were asked about (apps, gaming, ...) and the extra ones only say what failed.
+# the lists that were asked about (apps, gaming, ...) only say what failed.
 needed_lists=(core guest nvidia intel amd hybrid)
 needed_packages() {
     local group name
@@ -108,7 +86,7 @@ needed_packages() {
         while read -r name; do is_flathub "$name" || echo "$name"; done < <(list "$group")
     done | sort -u
 }
-# Every Flathub app: flatpak.txt if chosen, the ones in the chosen lists, the extra ones
+# Every Flathub app: flatpak.txt if chosen, and the ones in the chosen lists
 wanted_flatpaks() {
     local name
     {
@@ -116,7 +94,6 @@ wanted_flatpaks() {
         for group in "${groups[@]}"; do
             while read -r name; do is_flathub "$name" && echo "$name"; done < <(list "$group")
         done
-        ((${#user_flatpak[@]})) && printf '%s\n' "${user_flatpak[@]}"
     } | sort -u
 }
 # The system services enabled for the chosen lists
@@ -264,61 +241,8 @@ first app to use it asks for a keyring password, then every boot. Left empty, it
 encrypted disk still protects it)."
 fi
 
-# Extra packages (~/.config/hyprdori/user_pkg.txt), with Hyprdori's: each looked up first. One found
-# nowhere leaves the whole list out, so a misspelled name never installs part of it; one already
-# in a chosen list is reported and installed once, with that list
-user_native=() user_flatpak=()
-# The list is this machine's, outside the repo; missing, it's made with these notes and nothing
-# to install, to fill in for a later run
-user_pkg_file=${XDG_CONFIG_HOME:-$HOME/.config}/hyprdori/user_pkg.txt
-if [[ ! -e $user_pkg_file ]] && ! $dry; then
-    mkdir -p "${user_pkg_file%/*}"
-    cat >"$user_pkg_file" <<'EOF'
-# Extra packages that Hyprdori's install.sh offers to install with its own lists, on this machine
-# only (the file stays out of the repo). One per line: a package from the Arch repos, an AUR
-# package, or a Flathub app ID (com.example.App). Text after # and blank lines are skipped.
-#
-# Each entry is looked up before the question (the installed repos, archlinux.org, the AUR,
-# Flathub). An entry found in none of them leaves the whole list out, so a misspelled name never
-# installs part of it. An entry already in a chosen Hyprdori list is reported and installed once,
-# with that list. A package only in a repo outside Arch's (g14, a custom one) is found only once
-# that repo is in pacman.conf, which on a first install happens after this check.
-EOF
-fi
-user_pkgs=()
-[[ -e $user_pkg_file ]] && mapfile -t user_pkgs < <(sed 's/#.*//; s/[[:space:]]//g; /^$/d' "$user_pkg_file")
-if ((${#user_pkgs[@]})) && ask "Extra packages (~/.config/hyprdori/user_pkg.txt: ${#user_pkgs[@]})?" y; then
-    echo "Looking them up in the repos, the AUR and Flathub..."
-    chosen=("${groups[@]}")
-    $flatpak && chosen+=(flatpak)
-    unknown=() found_native=() found_flatpak=()
-    for pkg in "${user_pkgs[@]}"; do
-        lists=()
-        for group in "${chosen[@]}"; do
-            grep -qxF -- "$pkg" < <(list "$group") && lists+=("packages/$group.txt")
-        done
-        if ((${#lists[@]})); then
-            note "$pkg is already in ${lists[*]}: installed with it"
-            continue
-        fi
-        case $(source_of "$pkg") in
-            repo) found_native+=("$pkg"); echo "  $pkg: repos" ;;
-            aur) found_native+=("$pkg"); echo "  $pkg: AUR" ;;
-            flatpak) found_flatpak+=("$pkg"); echo "  $pkg: Flathub" ;;
-            *) unknown+=("$pkg") ;;
-        esac
-    done
-    if ((${#unknown[@]})); then
-        note "Not in the repos, the AUR or Flathub (or the lookup failed): ${unknown[*]}.
-~/.config/hyprdori/user_pkg.txt is left out; correct it and run install.sh again, or install them by hand."
-    else
-        user_native=("${found_native[@]}") user_flatpak=("${found_flatpak[@]}")
-    fi
-fi
-
 echo
-# shellcheck disable=SC1102  # $(( here opens a command, (( a test )) && echo, not arithmetic
-echo "Package lists: ${groups[*]}$($flatpak && echo ", flatpak")$(((${#user_native[@]} + ${#user_flatpak[@]})) && echo ", extra ($((${#user_native[@]} + ${#user_flatpak[@]})))")$([[ $autologin == --autologin ]] && echo "; autologin")"
+echo "Package lists: ${groups[*]}$($flatpak && echo ", flatpak")$([[ $autologin == --autologin ]] && echo "; autologin")"
 if $dry; then
     dry_report
     exit 0
@@ -420,8 +344,7 @@ install.sh again: it skips what's done and goes on from here."
     exit 1
 fi
 
-# Flathub's apps: flatpak.txt if chosen, the ones in the chosen lists (gaming.txt) and the extra
-# ones from ~/.config/hyprdori/user_pkg.txt
+# Flathub's apps: flatpak.txt if chosen, and the ones in the chosen lists (gaming.txt)
 mapfile -t apps < <(wanted_flatpaks)
 if ((${#apps[@]})); then
     step "Flatpak"
