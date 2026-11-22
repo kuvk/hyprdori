@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Yazi
+GenericName=File Manager
+Comment=Folders open in yazi in a kitty window, as SUPER+E opens it (hyprdori-yazi-live)
+Icon=yazi
+Exec=kitty -e hyprdori-yazi-live %f
+Terminal=false
+MimeType=inode/directory;
+Categories=System;FileManager;FileTools;
+Keywords=File;Manager;Explorer;Browser;
