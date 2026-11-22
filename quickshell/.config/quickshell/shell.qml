@@ -47,8 +47,9 @@ ShellRoot {
     // Idle lock and sleep, with the times from Settings for the power source in use
     readonly property bool idleEnabled: Idle.enabled
 
+    // Made once the settings have loaded (Config.ready), so each bar starts with its saved look
     Variants {
-        model: Quickshell.screens
+        model: Config.ready ? Quickshell.screens : []
 
         Bar {}
     }

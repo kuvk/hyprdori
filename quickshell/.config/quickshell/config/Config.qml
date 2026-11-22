@@ -137,6 +137,11 @@ Singleton {
     // How often the weather refreshes
     readonly property int weatherInterval: 30 * 60 * 1000
 
+    // settings.json has loaded (or can't be, or there is no defaults.json to write it from):
+    // the bars wait for it. Made with the starting values below, a bar would change its
+    // margins a moment after it first appears, and Quickshell can drop that change.
+    property bool ready: false
+
     // Reset (and a first start): defaults.json, saved with "Save as defaults", written in one
     // go (setting values one at a time saves after each, and the reload that causes can undo
     // the later ones). Without it the settings keep their starting values below.
@@ -147,6 +152,7 @@ Singleton {
             settingsFile.setText(JSON.stringify(saved, null, 2) + "\n");
         } catch (e) {
             console.warn("Config: no usable defaults.json; keeping the built-in defaults", e);
+            root.ready = true;
         }
     }
 
@@ -179,11 +185,14 @@ Singleton {
         onLoaded: {
             if (adapter.version < root.version)
                 root.reset();
+            else
+                root.ready = true;
         }
         onLoadFailed: error => {
-            if (error === FileViewError.FileNotFound) {
+            if (error === FileViewError.FileNotFound)
                 root.reset();
-            }
+            else
+                root.ready = true;
         }
 
         JsonAdapter {
