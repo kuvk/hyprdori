@@ -167,15 +167,26 @@ fit_rule({
   fit = { 0.5, 0.8 },
 })
 
--- An X11 app's loading window (LibreOffice's, DaVinci Resolve's) opens where the app places it,
--- often in a corner: centered instead. A rule can't tell it from the app's menus, which are
--- floating X11 windows too, at times with the same title and class (Resolve's, Remmina's ⋮
--- menu), and were centered with it. The loading window is the app's only window when it opens; a
--- menu opens beside the app's main window. So a floating X11 window is centered when no other
--- window of its process is open. Steam is left out: its windows come from several processes, and
--- its titled ones have their own rule.
+-- X11 apps' own floating windows (LibreOffice's loading window, palettes) open where the app
+-- places them, often in a corner: centered as they open. Left out: apps whose menus are floating
+-- X11 windows this rule would center too (DaVinci Resolve's, Remmina's ⋮ menu), and Steam, whose
+-- menus are of that kind and whose titled windows have their own rule. More such apps go in both
+-- lists below.
+hl.window_rule({
+  name = "xwayland-floating-center",
+  match = { xwayland = true, float = true, class = "negative:^(steam|resolve|org\\.remmina\\.Remmina)$" },
+  center = true,
+})
+
+-- Those apps' loading windows: a rule can't tell one from the app's menus (Resolve's have the same
+-- title and class), but it is the app's only window when it opens, and a menu opens beside the
+-- main window. So a floating window of theirs is centered when no other window of its process is
+-- open. That happens once it is shown (a window can't be moved before: Hyprland 0.57 crashes),
+-- so it is seen moving to the center.
+local center_lone = { resolve = true, ["org.remmina.Remmina"] = true }
+
 local function center_lone_x11(window)
-  if not (window.xwayland and window.floating) or window.class == "steam" then
+  if not (window.xwayland and window.floating and center_lone[window.class]) then
     return
   end
   for _, other in ipairs(hl.get_windows()) do
