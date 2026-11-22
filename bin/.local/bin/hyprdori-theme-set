@@ -54,7 +54,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib/hyprdori"))
 
 from theme_apply import (apply_cursor, apply_fonts, apply_window_buttons, notify_switch, reload_apps,
-                         reload_visible, set_shape)
+                         reload_visible, reload_zathura, set_shape)
 from theme_backgrounds import follow_wallpaper, is_theme_wallpaper, set_theme_default, theme_folder
 from theme_colors import (ANTIALIASINGS, CURRENT_DIR, HINTINGS, SETTINGS_OVERRIDE, available_themes,
                           current_theme, cursor_themes, icon_themes, load_theme, notify, run_quiet, themes_json)
@@ -106,12 +106,14 @@ def main(argv: list[str]) -> int:
         SETTINGS_OVERRIDE.update(font=font, displayFont=display, monoEverywhere=everywhere == "on",
                                  fontHinting=hinting, fontAntialiasing=antialiasing)
         apply_fonts(generate(current_theme())["strings"])
-        # kitty rereads kitty-font.conf
+        # kitty rereads kitty-font.conf, zathura its config
         run_quiet(["pkill", "-USR1", "-x", "kitty"])
+        reload_zathura()
         return 0
     if argv == ["--text-size"]:
-        # Displays > Text size changed (hyprdori-monitors): GTK's font size
+        # Displays > Text size changed (hyprdori-monitors): GTK's font size, and zathura's
         apply_fonts(generate(current_theme())["strings"])
+        reload_zathura()
         return 0
     if argv == ["--follow-wallpaper"]:
         follow_wallpaper(load_theme(current_theme()))

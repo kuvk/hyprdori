@@ -1,0 +1,39 @@
+# ~/.config/zathura/zathurarc
+#
+# Colors and font follow the system theme and Settings > Fonts
+# (~/.config/theme/current/zathurarc, written by hyprdori-theme-set, which also tells open
+# zathura windows to read it again). zathura's own keys stay: Ctrl+R recolors the pages in the
+# theme's colors, Tab shows the index, / searches, f follows a link, d shows two pages.
+
+# selected text goes to the clipboard, without a message each time
+set selection-clipboard clipboard
+set selection-notification false
+
+# no GTK frame (Hyprland draws the border); the statusbar only
+set window-decoration false
+set guioptions s
+
+# ~/ in the statusbar, and only the file's name in the window title
+set statusbar-home-tilde true
+set window-title-home-tilde true
+set window-title-basename true
+
+# a document opens with the whole page in view
+set adjust-open best-fit
+
+# page down stops at a page's edge and keeps a sliver of the last view
+set scroll-page-aware true
+set scroll-full-overlap 0.01
+set scroll-step 60
+set zoom-step 10
+
+# a gap between pages
+set page-v-padding 4
+set page-h-padding 4
+
+# recoloring (Ctrl+R, off when a document opens) keeps hues and leaves images as they are.
+# recolor itself stays unset, so a theme change doesn't turn it off in open windows.
+set recolor-keephue true
+set recolor-reverse-video true
+
+include ../theme/current/zathurarc

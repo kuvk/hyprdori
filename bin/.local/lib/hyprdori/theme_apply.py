@@ -163,6 +163,7 @@ def reload_apps(theme: dict) -> None:
     run_quiet(["pkill", "-USR2", "-x", "btop"])
     run_quiet(["pkill", "-USR2", "-x", "cava"])  # reload colors
     run_quiet(["pkill", "-USR1", "-x", "swayimg"])  # re-reads current/swayimg.lua
+    reload_zathura()
     # bat reads themes from a cache that must be rebuilt: after the theme file changed, and
     # whenever the cache is missing or older than it (a fresh install, a cleared cache), so a
     # build that didn't happen is made up at the next run (login)
@@ -218,6 +219,25 @@ def reload_apps(theme: dict) -> None:
                 run_quiet(
                     ["hyprctl", "hyprpaper", "wallpaper", f"{monitor},{path},cover"]
                 )
+
+
+def reload_zathura() -> None:
+    """Open zathura windows read their config again (current/zathurarc: colors and font).
+    Each one is on the session bus as org.pwmt.zathura.PID-<pid> and runs a command sent to it."""
+    if not shutil.which("busctl"):
+        return
+    out = subprocess.run(
+        ["busctl", "--user", "list", "--no-legend", "--no-pager"],
+        capture_output=True,
+        text=True,
+    )
+    for line in out.stdout.splitlines():
+        name = line.split(maxsplit=1)[0] if line.strip() else ""
+        if name.startswith("org.pwmt.zathura.PID-"):
+            run_quiet(
+                ["busctl", "--user", "call", name, "/org/pwmt/zathura", "org.pwmt.zathura",
+                 "ExecuteCommand", "s", "source"]
+            )
 
 
 def redraw_prompts() -> None:
