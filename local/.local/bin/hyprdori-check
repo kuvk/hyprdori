@@ -24,10 +24,13 @@ mapfile -t tracked < <(git ls-files --cached --others --exclude-standard)
 # folder); migrations/ is empty until one is needed
 mapfile -t current < <(printf '%s\n' "${tracked[@]}" | grep -vE '^migrations/|^local/\.local/bin/hyprdori-check$')
 
-# The folders install.sh doesn't stow and hyprdori-update's Links step skips: the same list
-stow_list() { grep -o '^not_stowed=([^)]*)' "$1"; }
-[[ $(stow_list install.sh) == "$(stow_list local/.local/bin/hyprdori-update)" ]] ||
-    fail "not_stowed differs between install.sh and local/.local/bin/hyprdori-update"
+# The folders install.sh doesn't stow, hyprdori-update's Links step skips and uninstall.sh
+# doesn't unstow: the same list
+stow_list() { grep -o 'not_stowed=([^)]*)' "$1"; }
+for file in local/.local/bin/hyprdori-update uninstall.sh; do
+    [[ -n $(stow_list install.sh) && $(stow_list install.sh) == "$(stow_list "$file")" ]] ||
+        fail "not_stowed differs between install.sh and $file"
+done
 
 # The mkinitcpio preset that puts a kernel and its image on the ESP: the same in install.sh and
 # hyprdori-kernel-preset (their variables named alike: the kernel, the ESP's kernel folder)

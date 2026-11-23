@@ -7,6 +7,9 @@
 #   sudo limine/install.sh             the current theme's colors, accents included
 #                                      (hyprdori-theme-set; Catppuccin Mocha before it has run)
 #   sudo limine/install.sh --theme     the same, but stop if there's no theme yet
+#   sudo limine/install.sh --plain     a plain menu: the same entries in Limine's own look, no
+#                                      wallpaper, and no longer Hyprdori's (uninstall.sh), so
+#                                      hyprdori-update and the theme leave it alone
 #   limine/install.sh --print          print the config instead, without installing
 #   limine/install.sh --preview FILE   draw the wallpaper (the logos, no menu text) to FILE
 #   sudo limine/install.sh --scan      print entries for the other systems on this machine's
@@ -37,16 +40,18 @@ esp=/efi
 kernels=/efi/arch
 mode=install
 use_theme=false
+plain=false
 resolution=
 options="$*"  # kept in limine.conf, so hyprdori-update can run this again the same way
 while (($#)); do
     case $1 in
         --theme) use_theme=true ;;
+        --plain) plain=true ;;
         --print) mode=print ;;
         --preview) mode=preview; preview=${2:?--preview needs a file}; shift ;;
         --resolution) resolution=${2:?--resolution needs WxH}; shift ;;
         --scan) mode=scan ;;
-        *) echo "usage: $0 [--theme] [--resolution WxH] [--print | --preview FILE | --scan]" >&2; exit 1 ;;
+        *) echo "usage: $0 [--theme | --plain] [--resolution WxH] [--print | --preview FILE | --scan]" >&2; exit 1 ;;
     esac
     shift
 done
@@ -264,7 +269,20 @@ wallpaper() {
 }
 
 config() {
-    cat <<EOF
+    if $plain; then
+        cat <<EOF
+# A plain Limine menu, written by Hyprdori's uninstall.sh (limine/install.sh --plain); edit it as
+# any Limine menu: nothing of Hyprdori's writes it again unless Hyprdori is installed again and
+# its menu chosen.
+timeout: ${timeout:-3}
+default_entry: ${default:-Arch Linux/${found[0]}}
+${quiet:+quiet: $quiet
+}${remember:+remember_last_entry: $remember
+}
+/+Arch Linux
+EOF
+    else
+        cat <<EOF
 # Written by limine/install.sh in Hyprdori; edit that and run it again.
 # Options: $options
 timeout: ${timeout:-3}
@@ -292,6 +310,7 @@ term_margin_gradient: 0
 
 /+Arch Linux
 EOF
+    fi
     # limine-snapper-sync finds this entry by the machine's id
     $snapshots && echo "    comment: machine-id=$(cat /etc/machine-id)"
     local k
@@ -324,7 +343,7 @@ if [[ $mode == preview ]]; then
 fi
 
 conf=$(config)
-wallpaper "$build/wallpaper.png"
+$plain || wallpaper "$build/wallpaper.png"
 install -D -m 0644 /usr/share/limine/BOOTX64.EFI "$esp/EFI/limine/BOOTX64.EFI"
 # The same at the path firmware starts when it has no boot entries (lost to a firmware update or
 # reset, or another system's install). Only where nothing else is there: another system's own
@@ -336,7 +355,11 @@ if [[ ! -e $fallback ]] || grep -qa 'Limine' "$fallback"; then
 else
     echo "$fallback is another loader's; left as it is" >&2
 fi
-install -m 0644 "$build/wallpaper.png" "$esp/EFI/limine/"
+if $plain; then
+    rm -f "$esp/EFI/limine/wallpaper.png"
+else
+    install -m 0644 "$build/wallpaper.png" "$esp/EFI/limine/"
+fi
 printf '%s\n' "$conf" >"$esp/limine.conf"
 # Limine reads the one next to its EFI file first: none there, so it reads /efi/limine.conf
 rm -f "$esp/EFI/limine/limine.conf"
