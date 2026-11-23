@@ -25,7 +25,7 @@ set -uo pipefail
 hyprdori=$(cd "$(dirname "$(readlink -f "$0")")/../../.." && pwd)
 yes=false
 [[ ${1:-} == --yes || ${1:-} == -y ]] && yes=true
-bin="$hyprdori/bin/.local/bin"
+bin="$hyprdori/local/.local/bin"
 # How many updates the last check found, for the shell's update button (its dot); gone when none
 waiting=${XDG_STATE_HOME:-$HOME/.local/state}/hyprdori/updates-waiting
 
@@ -256,7 +256,7 @@ fi
 # this machine was installed get their links and removed ones lose theirs. With a file in the
 # way stow changes nothing; it's listed to move aside, and the next update links the rest ------
 step "Links"
-not_stowed=(limine migrations packages plymouth sddm)   # the same as install.sh's
+not_stowed=(docs limine migrations packages plymouth sddm)   # the same as install.sh's
 stowed=()
 for dir in "$hyprdori"/*/; do
     name=$(basename "$dir")
@@ -279,7 +279,7 @@ else
 fi
 
 step "Migrations"
-"$hyprdori/bin/.local/bin/hyprdori-migrate" || note "A migration failed; hyprdori-update tries it again."
+"$hyprdori/local/.local/bin/hyprdori-migrate" || note "A migration failed; hyprdori-update tries it again."
 
 # --- What's left to do by hand ----------------------------------------------------------------
 step "Done"

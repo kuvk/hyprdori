@@ -50,7 +50,7 @@ import sys
 import tomllib
 from pathlib import Path
 
-# The parts are beside the commands, in ../lib/hyprdori (the repo's bin/.local/lib/hyprdori)
+# The parts are beside the commands, in ../lib/hyprdori (the repo's local/.local/lib/hyprdori)
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib/hyprdori"))
 
 from theme_apply import (apply_cursor, apply_fonts, apply_window_buttons, notify_switch, reload_apps,

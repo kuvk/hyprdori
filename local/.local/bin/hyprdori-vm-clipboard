@@ -25,7 +25,7 @@ done
 [[ -n ${DISPLAY:-} && -n ${WAYLAND_DISPLAY:-} ]] || { echo "hyprdori-vm-clipboard: needs Hyprland's DISPLAY and WAYLAND_DISPLAY" >&2; exit 1; }
 
 # Wayland to X11: every new text
-wl-paste --type text --watch "$(readlink -f "$0")" --to-x11 &
+wl-paste --type text --watch "$HOME/.local/bin/hyprdori-vm-clipboard" --to-x11 &
 
 # X11 to Wayland: after every X11 change (from the host, or an X11 app)
 while clipnotify; do

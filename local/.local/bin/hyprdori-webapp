@@ -37,7 +37,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-# The browsers' table is beside the commands, in ../lib/hyprdori (the repo's bin/.local/lib/hyprdori)
+# The browsers' table is beside the commands, in ../lib/hyprdori (the repo's local/.local/lib/hyprdori)
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib/hyprdori"))
 
 import browsers as browser_table

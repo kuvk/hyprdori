@@ -16,7 +16,7 @@ for rel in .local/share/applications/yazi.desktop .config/zathura/zathurarc; do
     echo "Moved ~/$rel to $backup"
 done
 
-stow -d "$hyprdori" -t "$HOME" --restow bin zathura
+stow -d "$hyprdori" -t "$HOME" --restow local zathura
 
 current=$(xdg-mime query default inode/directory 2>/dev/null)
 # none, kitty's open handler, or yazi only through a cache: yazi, written to mimeapps.list

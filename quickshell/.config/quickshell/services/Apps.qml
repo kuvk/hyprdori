@@ -14,7 +14,7 @@ Singleton {
 
     // Menu groups: label, icon and the freedesktop categories they take
     readonly property var groups: [
-        // Hyprdori's own windows (bin/.local/share/applications: Categories has X-Hyprdori)
+        // Hyprdori's own windows (local/.local/share/applications: Categories has X-Hyprdori)
         { id: "shell", label: "Shell", icon: Icons.sliders, cats: ["X-Hyprdori"] },
         { id: "internet", label: "Internet", icon: Icons.globe, cats: ["Network", "WebBrowser", "Email", "Chat", "InstantMessaging"] },
         { id: "multimedia", label: "Multimedia", icon: Icons.music, cats: ["AudioVideo", "Audio", "Video", "Player", "Recorder"] },

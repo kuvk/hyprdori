@@ -86,11 +86,11 @@ trap 'rm -rf "$build"' EXIT
 # text color; the hint under the field in the secondary text color (yellow, then red after wrong
 # passwords); the progress bar in the accent on a faint track; the farewell line in red,
 # large, alone on the screen
-# The logos drawn like kitty draws them, in 24px rows (bin/.local/bin/hyprdori-logo-render); no
+# The logos drawn like kitty draws them, in 24px rows (local/.local/bin/hyprdori-logo-render); no
 # text logo, an empty image
-"$here/../bin/.local/bin/hyprdori-logo-render" --logo "$logo_text" --color "$magenta" --cell-height 24 --out "$build/logo.png"
+"$here/../local/.local/bin/hyprdori-logo-render" --logo "$logo_text" --color "$magenta" --cell-height 24 --out "$build/logo.png"
 if [[ -r $words_text ]]; then
-    "$here/../bin/.local/bin/hyprdori-logo-render" --logo "$words_text" --color "$magenta" --cell-height 24 --out "$build/text.png"
+    "$here/../local/.local/bin/hyprdori-logo-render" --logo "$words_text" --color "$magenta" --cell-height 24 --out "$build/text.png"
 else
     magick -size 1x1 xc:none "$build/text.png"
 fi

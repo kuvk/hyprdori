@@ -20,7 +20,6 @@ for _ in {1..50}; do
     [[ -s $hyprland_lock ]] && break
     sleep 0.1
 done
-scripts=$(dirname "$(readlink -f "$0")")
 sleep_signal="type='signal',sender='org.freedesktop.login1',interface='org.freedesktop.login1.Manager',member='PrepareForSleep'"
 
 # After every wake (PrepareForSleep false): the lock screen takes the keys, and again half a second
@@ -69,7 +68,7 @@ trap 'kill "$events_PID" 2>/dev/null' EXIT
 while hyprland_alive; do
     if read -r -t 5 line <&"${events[0]}"; then
         if [[ $line == *"boolean true"* ]]; then
-            "$scripts/hyprdori-sleep-lock"
+            "$HOME/.local/bin/hyprdori-sleep-lock"
             exit 0
         fi
     elif (($? <= 128)); then

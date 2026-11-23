@@ -45,7 +45,7 @@ import json
 import sys
 from pathlib import Path
 
-# The parts are beside the commands, in ../lib/hyprdori (the repo's bin/.local/lib/hyprdori)
+# The parts are beside the commands, in ../lib/hyprdori (the repo's local/.local/lib/hyprdori)
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib/hyprdori"))
 
 from monitors_apply import apply, export_greeter_layout, reset, set_state, state

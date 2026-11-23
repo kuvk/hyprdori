@@ -39,7 +39,7 @@ image/x-xbitmap=swayimg.desktop
 image/x-xpixmap=swayimg.desktop
 image/x-pcx=swayimg.desktop
 image/vnd.zbrush.pcx=swayimg.desktop
-# Folders: yazi in kitty (bin/.local/share/applications/yazi.desktop); with none set, the first
+# Folders: yazi in kitty (local/.local/share/applications/yazi.desktop); with none set, the first
 # app listing folders opens them, kitty's open handler
 inode/directory=yazi.desktop
 # PDFs, PostScript, DjVu, comic books: zathura

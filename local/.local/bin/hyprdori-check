@@ -7,7 +7,7 @@
 #   hyprdori-check
 #
 # As git's pre-commit hook (once per clone; hooks aren't part of the repo):
-#   ln -s ../../bin/.local/bin/hyprdori-check .git/hooks/pre-commit
+#   ln -s ../../local/.local/bin/hyprdori-check .git/hooks/pre-commit
 
 # -h, --help: the comment above, then nothing else runs
 case ${1:-} in -h | --help) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; exit 0 ;; esac
@@ -22,12 +22,12 @@ mapfile -t tracked < <(git ls-files --cached --others --exclude-standard)
 # Old paths and removed commands are named on purpose by this check and by migrations (one-time
 # fixes for systems installed before an update, which may delete an old link or rename an old
 # folder); migrations/ is empty until one is needed
-mapfile -t current < <(printf '%s\n' "${tracked[@]}" | grep -vE '^migrations/|^bin/\.local/bin/hyprdori-check$')
+mapfile -t current < <(printf '%s\n' "${tracked[@]}" | grep -vE '^migrations/|^local/\.local/bin/hyprdori-check$')
 
 # The folders install.sh doesn't stow and hyprdori-update's Links step skips: the same list
 stow_list() { grep -o '^not_stowed=([^)]*)' "$1"; }
-[[ $(stow_list install.sh) == "$(stow_list bin/.local/bin/hyprdori-update)" ]] ||
-    fail "not_stowed differs between install.sh and bin/.local/bin/hyprdori-update"
+[[ $(stow_list install.sh) == "$(stow_list local/.local/bin/hyprdori-update)" ]] ||
+    fail "not_stowed differs between install.sh and local/.local/bin/hyprdori-update"
 
 # The mkinitcpio preset that puts a kernel and its image on the ESP: the same in install.sh and
 # hyprdori-kernel-preset (their variables named alike: the kernel, the ESP's kernel folder)
@@ -36,8 +36,8 @@ preset_lines() {
         sed -e 's/\$kernels/\/efi\/arch/g' -e 's/\$kernel\b/KERNEL/g' -e 's/\$name\b/KERNEL/g'
 }
 presets_install=$(preset_lines install.sh)
-[[ -n $presets_install && $presets_install == "$(preset_lines bin/.local/bin/hyprdori-kernel-preset)" ]] ||
-    fail "the kernel preset differs between install.sh and bin/.local/bin/hyprdori-kernel-preset"
+[[ -n $presets_install && $presets_install == "$(preset_lines local/.local/bin/hyprdori-kernel-preset)" ]] ||
+    fail "the kernel preset differs between install.sh and local/.local/bin/hyprdori-kernel-preset"
 
 # Files by kind, from their first line or extension
 shell=() python=() lua=() data=() qml=()
@@ -104,11 +104,11 @@ for name in sys.argv[2:]:
         print(f"{kind} syntax: {name}: {e}")
 
 # hyprdori-theme-set's parts
-sys.path.insert(0, str(root / "bin/.local/lib/hyprdori"))
+sys.path.insert(0, str(root / "local/.local/lib/hyprdori"))
 try:
     import theme_colors, theme_render
 except Exception as e:
-    print(f"theme: the parts in bin/.local/lib/hyprdori don't load: {e}")
+    print(f"theme: the parts in local/.local/lib/hyprdori don't load: {e}")
     sys.exit()
 theme_colors.THEMES_DIR = root / "theme/.config/theme/themes"
 theme_colors.OVERRIDES_DIR = root / "theme/.config/theme/overrides"
@@ -179,7 +179,7 @@ done <<<"$titles_rule"
 # the titles the bar shows an icon for are windows' titles too (the shell's, a script's kitty,
 # or a hyprdori-present window)
 while IFS= read -r title; do
-    [[ -z $title ]] || git grep -q -E "title: \"$title\"|--title \"$title\"|hyprdori-window\"?,? \"$title\"" -- 'quickshell/*.qml' 'bin/*' ||
+    [[ -z $title ]] || git grep -q -E "title: \"$title\"|--title \"$title\"|hyprdori-window\"?,? \"$title\"" -- 'quickshell/*.qml' 'local/*' ||
         fail "shell window title: no window is titled \"$title\" (WindowTitle.qml shellIcons)"
 done < <(sed -n '/shellIcons: ({/,/})/p' quickshell/.config/quickshell/modules/bar/WindowTitle.qml | grep -o '"[^"]*":' | tr -d '":')
 
@@ -194,16 +194,16 @@ while IFS= read -r line; do
 done < <(git grep -n -I -i -E 'kuvk' -- "${current[@]}" 2>/dev/null | grep -v -E 'github\.com/kuvk/')
 while IFS= read -r line; do
     fail "old path: $line"
-done < <(git grep -n -I -E '\.config/scripts|scripts/\.config|share/dotfiles|config/dotfiles' -- "${current[@]}" 2>/dev/null)
+done < <(git grep -n -I -E '\.config/scripts|scripts/\.config|share/dotfiles|config/dotfiles|bin/\.local' -- "${current[@]}" 2>/dev/null)
 
 # Every path to a Hyprdori command points at one (~/.local/bin/hyprdori-*, "$scripts/hyprdori-*",
-# bin/.local/bin/hyprdori-*), and no shell variable runs straight into a name (a variable then -name)
+# local/.local/bin/hyprdori-*), and no shell variable runs straight into a name (a variable then -name)
 while IFS= read -r name; do
-    [[ -f bin/.local/bin/$name ]] || fail "missing command: $name"
+    [[ -f local/.local/bin/$name ]] || fail "missing command: $name"
 done < <(git grep -h -o -I -E '(\.local/bin/|\$scripts/|\$\{scripts\}/)hyprdori-[a-z][a-z-]*' -- "${current[@]}" 2>/dev/null | sed 's|.*/||' | sort -u)
 while IFS= read -r line; do
     fail "variable run into a command name: $line"
-done < <(git grep -n -I -E '"\$[A-Za-z_]+-[a-z]' -- 'bin/*' install.sh 'limine/*' 'plymouth/*' 'sddm/*' 2>/dev/null | grep -v -E '"\$[A-Za-z_]+-[0-9]')
+done < <(git grep -n -I -E '"\$[A-Za-z_]+-[a-z]' -- 'local/*' install.sh 'limine/*' 'plymouth/*' 'sddm/*' 2>/dev/null | grep -v -E '"\$[A-Za-z_]+-[0-9]')
 
 if ((failed)); then
     exit 1

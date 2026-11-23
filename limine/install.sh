@@ -245,7 +245,7 @@ wallpaper() {
     logo_file="$home/.config/theme/logo/dori-logo" text_file="$home/.config/theme/logo/dori-text"
     [[ -r $logo_file ]] || { echo "No logo at $logo_file" >&2; exit 1; }
     # drawn like kitty draws them, in 12px rows (24 on large screens), by hyprdori-logo-render
-    "$here/../bin/.local/bin/hyprdori-logo-render" --logo "$logo_file" --color "$magenta" --cell-height $((12 * scale)) --out "$build/logo.png"
+    "$here/../local/.local/bin/hyprdori-logo-render" --logo "$logo_file" --color "$magenta" --cell-height $((12 * scale)) --out "$build/logo.png"
     lw=$(magick identify -format %w "$build/logo.png"); lh=$(magick identify -format %h "$build/logo.png")
     # the tree's first row, as Limine centers it (the entries and "Arch Linux")
     tree_top=$(((res_h / cell_h - ${#found[@]} - 1) / 2 * cell_h))
@@ -254,7 +254,7 @@ wallpaper() {
     ((logo_top < 0)) && logo_top=0
     local layers=("$build/logo.png" -geometry +$(((res_w - lw) / 2))+$logo_top -composite)
     if [[ -r $text_file ]]; then
-        "$here/../bin/.local/bin/hyprdori-logo-render" --logo "$text_file" --color "$magenta" --cell-height $((12 * scale)) --out "$build/text.png"
+        "$here/../local/.local/bin/hyprdori-logo-render" --logo "$text_file" --color "$magenta" --cell-height $((12 * scale)) --out "$build/text.png"
         tw=$(magick identify -format %w "$build/text.png"); th=$(magick identify -format %h "$build/text.png")
         # its bottom 4 rows from the screen's bottom, a row clear of the countdown line
         text_top=$((res_h - 4 * cell_h - th))

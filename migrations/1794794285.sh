@@ -4,4 +4,4 @@
 # colored too.
 [[ -e /usr/local/bin/browser-theme-policy ]] || exit 0
 sudo -v || exit 1
-sudo "$HYPRDORI_PATH/bin/.local/bin/hyprdori-browser-theme-setup" >/dev/null
+sudo "$HOME/.local/bin/hyprdori-browser-theme-setup" >/dev/null

@@ -26,7 +26,7 @@ dry=false
 
 hyprdori=$(dirname "$(readlink -f "$0")")
 # Not stowed; hyprdori-update's Links step has the same list (hyprdori-check compares them)
-not_stowed=(limine migrations packages plymouth sddm)
+not_stowed=(docs limine migrations packages plymouth sddm)
 packages=()
 for dir in "$hyprdori"/*/; do
     name=$(basename "$dir")
@@ -170,14 +170,14 @@ curl -fsI --max-time 10 https://archlinux.org >/dev/null || { echo "No internet 
 # awake while it runs (on battery it asks first), then the password once: sudo keeps it until
 # the install ends, however long the downloads take
 if ! $dry; then
-    "$hyprdori/bin/.local/bin/hyprdori-awake" $$ "the install" || { echo "Nothing installed."; exit 0; }
+    "$hyprdori/local/.local/bin/hyprdori-awake" $$ "the install" || { echo "Nothing installed."; exit 0; }
     export HYPRDORI_AWAKE_ASKED=1
-    "$hyprdori/bin/.local/bin/hyprdori-sudo-hold" $$ || { echo "No password, nothing installed." >&2; exit 1; }
+    "$hyprdori/local/.local/bin/hyprdori-sudo-hold" $$ || { echo "No password, nothing installed." >&2; exit 1; }
 fi
 
 # --- Hardware -----------------------------------------------------------------------------------
 # hyprdori-hw answers what the machine is (from the repo: nothing is linked yet)
-hw=$hyprdori/bin/.local/bin/hyprdori-hw
+hw=$hyprdori/local/.local/bin/hyprdori-hw
 gpus=() boot_gpu= boot_driver=
 mapfile -t gpus < <("$hw" gpus)
 read -r boot_gpu boot_driver < <("$hw" boot-gpu) || true
@@ -305,7 +305,7 @@ mkdir -p "$HOME/.local/share/systemd/user" "$HOME/.local/share/applications" "$H
 stow -d "$hyprdori" -t "$HOME" --restow "${packages[@]}"
 echo "Linked: ${packages[*]}"
 # A fresh install has nothing to migrate: hyprdori-update runs only migrations added later
-"$hyprdori/bin/.local/bin/hyprdori-migrate" --mark-done
+"$hyprdori/local/.local/bin/hyprdori-migrate" --mark-done
 
 # --- Packages -------------------------------------------------------------------------------------------
 step "Packages"
