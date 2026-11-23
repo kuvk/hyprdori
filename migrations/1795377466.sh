@@ -8,7 +8,9 @@ backup="$HOME/.hyprdori-backup/$(date +%F_%H-%M-%S)"
 
 for rel in .local/share/applications/yazi.desktop .config/zathura/zathurarc; do
     file=$HOME/$rel
-    [[ -L $file || ! -e $file ]] && continue
+    # nothing there, a link, or the repo's own file reached through a linked folder
+    # (~/.config/zathura linked whole when it didn't exist yet): left alone
+    [[ -L $file || ! -e $file || $(realpath "$file") == "$hyprdori"/* ]] && continue
     mkdir -p "$backup/$(dirname "$rel")"
     mv "$file" "$backup/$rel"
     echo "Moved ~/$rel to $backup"
