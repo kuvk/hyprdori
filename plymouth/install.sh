@@ -14,13 +14,15 @@
 #
 # The progress bar fills in the time this boot took from the drives unlocking (or the splash
 # starting, without encryption) to its end, read from the journal (3 to 20 s; 8 s without one),
-# so it matches each machine; run it again to measure again. The splash then stays on screen
-# until the login screen or the desktop draws over it, with no text console in between: a
-# plymouth-quit drop-in (/etc/systemd/system/plymouth-quit.service.d/hyprdori.conf) quits it
-# with --retain-splash. Should those fail to start, Ctrl+Alt+F2 gives a text login.
+# so it matches each machine; run it again to measure again. With Hyprdori's login screen
+# (sddm/install.sh), the splash then stays on screen until it or the desktop draws over it, with
+# no text console in between: a plymouth-quit drop-in
+# (/etc/systemd/system/plymouth-quit.service.d/hyprdori.conf) quits it with --retain-splash.
+# Should those fail to start, Ctrl+Alt+F2 gives a text login. With another login screen or none,
+# the splash quits as Plymouth's own does.
 #
-# Also installs the luks-poweroff mkinitcpio hook (after sd-encrypt): failing to unlock the
-# drives powers off. The limits come from the kernel options in /etc/kernel/cmdline:
+# With the systemd initramfs (sd-encrypt), also installs the luks-poweroff mkinitcpio hook:
+# failing to unlock the drives powers off. The limits come from the kernel options:
 # rd.luks.options=timeout=90s,tries=3 systemd.default_device_timeout_sec=infinity
 
 set -euo pipefail
@@ -193,15 +195,22 @@ install -D -m 0644 "$here/luks-poweroff" /etc/initcpio/install/luks-poweroff
 if ! grep -q '^HOOKS=.*\bluks-poweroff\b' /etc/mkinitcpio.conf; then
     sed -i '/^HOOKS=/s/\bsd-encrypt\b/sd-encrypt luks-poweroff/' /etc/mkinitcpio.conf
 fi
-# The splash kept on screen until the login screen or the desktop replaces it (sddm.service
-# starts after plymouth-quit.service), so no text console shows in between
-install -D -m 0644 /dev/stdin /etc/systemd/system/plymouth-quit.service.d/hyprdori.conf <<'EOF'
+# With Hyprdori's login screen, the splash kept on screen until it or the desktop replaces it
+# (sddm.service starts after plymouth-quit.service), so no text console shows in between. Not
+# with another login screen or none: a console login would be left behind the last frame
+dropin=/etc/systemd/system/plymouth-quit.service.d/hyprdori.conf
+if [[ -f /etc/sddm.conf.d/hyprdori.conf ]]; then
+    install -D -m 0644 /dev/stdin "$dropin" <<'EOF'
 # Written by plymouth/install.sh in Hyprdori: the splash stays on screen until the login
 # screen or the desktop draws over it, with no text console in between
 [Service]
 ExecStart=
 ExecStart=-/usr/bin/plymouth quit --retain-splash
 EOF
+else
+    rm -f "$dropin"
+    rmdir "${dropin%/*}" 2>/dev/null || true
+fi
 systemctl daemon-reload
 plymouth-set-default-theme -R hyprdori
 echo "Installed (the progress bar fills in ${boot_seconds} s). The boot splash shows at the next boot."

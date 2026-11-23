@@ -1,4 +1,4 @@
 # A btrfs root (install.sh asks then): a snapshot before every hyprdori-update, the newest 5
-# kept, bootable from the menu. / only: /home holds the user's work, never rolled back
+# kept, bootable from the boot menu when Limine is chosen
+# (limine-snapper-sync is in boot.txt). / only: /home holds the user's work, never rolled back
 snapper                  # snapshots of / (the "root" config in @snapshots)
-limine-snapper-sync      # AUR, built with GraalVM (a ~300 MB download, minutes): the menu's Snapshots

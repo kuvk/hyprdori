@@ -188,10 +188,10 @@ while IFS= read -r line; do
     fail "old color name: $line"
 done < <(git grep -n -E 'Theme\.(highlight|accent2|accent3|text|subtext[01]|overlay[012]|surface[012]|base|mantle|crust|mauve|peach|teal|sky|sapphire|lavender|maroon|pink|rosewater|flamingo)\b' -- 'quickshell/*.qml' 2>/dev/null)
 
-# Old names: the project is hyprdori (github.com/kuvk/... is the account and stays)
+# Old names: the project is hyprdori (github.com/kuvk/... and raw.githubusercontent.com/kuvk/... are the account and stay)
 while IFS= read -r line; do
     fail "old name: $line"
-done < <(git grep -n -I -i -E 'kuvk' -- "${current[@]}" 2>/dev/null | grep -v -E 'github\.com/kuvk/')
+done < <(git grep -n -I -i -E 'kuvk' -- "${current[@]}" 2>/dev/null | grep -v -E '(github\.com|githubusercontent\.com)/kuvk/')
 while IFS= read -r line; do
     fail "old path: $line"
 done < <(git grep -n -I -E '\.config/scripts|scripts/\.config|share/dotfiles|config/dotfiles|bin/\.local' -- "${current[@]}" 2>/dev/null)

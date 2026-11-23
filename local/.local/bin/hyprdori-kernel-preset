@@ -13,7 +13,8 @@
 #   hyprdori-kernel-preset KERNEL...  these (package names: linux-zen, linux-g14, ...), again too
 #
 # Asks for the password (sudo). Each image is about 150 MB with NVIDIA's modules; it stops when
-# the ESP lacks the room.
+# the ESP lacks the room. Only with Hyprdori's boot menu (hyprdori-installed menu): another boot
+# loader reads its kernels where they are.
 
 # -h, --help: the comment above, then nothing else runs
 case ${1:-} in -h | --help) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; exit 0 ;; esac
@@ -24,6 +25,8 @@ esp=/efi
 kernels=$esp/arch
 conf=$esp/limine.conf
 
+"$hyprdori/local/.local/bin/hyprdori-installed" menu ||
+    { echo "No boot menu of Hyprdori's (Limine) here: kernels stay where the boot loader reads them." >&2; exit 1; }
 mountpoint -q "$esp" || { echo "The ESP isn't mounted at $esp" >&2; exit 1; }
 
 # The kernel file of an installed kernel package, from its module folder's pkgbase

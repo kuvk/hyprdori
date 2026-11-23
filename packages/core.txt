@@ -1,7 +1,7 @@
 # Everything Hyprdori needs, on every machine, to work with nothing left to do by hand. While one
 # of these isn't installed, install.sh stops after the packages. One package per line; "# AUR"
-# marks AUR packages (paru installs both). Arch's own install covers the rest: base, linux-firmware,
-# the CPU's microcode, cryptsetup, lvm2.
+# marks AUR packages (paru installs both). What the Arch install itself must have is in base.txt;
+# the boot menu, splash and login screen, each installed only when chosen, are in boot.txt.
 
 # Kernels (both, with headers for the NVIDIA module)
 linux
@@ -17,12 +17,6 @@ mesa-utils
 vulkan-icd-loader
 lib32-vulkan-icd-loader
 vulkan-tools
-
-# Boot: Limine menu, Plymouth splash, SDDM login screen
-limine
-efibootmgr
-plymouth
-sddm
 
 # Hyprland
 hyprland

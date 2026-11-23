@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
-# The boot splash (Plymouth) and boot menu (Limine) in the current theme. Runs both
-# installers with one password prompt, and copies the login screen's theme (sddm/hyprdori)
-# where SDDM reads it. They read the theme and logo when they run, so a theme or accent
-# change shows at boot only after this; the login screen's colors follow on their own.
+# The boot splash (Plymouth) and boot menu (Limine) in the current theme. Runs their
+# installers with one password prompt, for the ones this machine has (hyprdori-installed), and
+# copies the login screen's theme (sddm/hyprdori) where SDDM reads it. They read the theme and
+# logo when they run, so a theme or accent change shows at boot only after this; the login
+# screen's colors follow on their own.
 #
 #   hyprdori-theme-boot            update, unless they're already built from the current theme
 #   hyprdori-theme-boot --force    update anyway
-#   hyprdori-theme-boot --check    say whether an update is needed (exit 0 yes, 1 no); no root
+#   hyprdori-theme-boot --check    say whether an update is needed (exit 0 yes, 1 no: also
+#                                  without the splash and the menu); no root
 #   hyprdori-theme-boot --window   in a window (hyprdori-present): the text logo, what this
 #                                  does, Yes / No, the output, then any key closes it (the
 #                                  notification's Update button, Settings, the update window)
@@ -16,8 +18,8 @@
 # Asks for the password in a terminal (sudo) or, started from the desktop, in the polkit
 # dialog (pkexec). Plymouth rebuilds every initramfs, which takes a while.
 #
-# What they were last built from is kept as a checksum in /var/lib/hyprdori/boot-theme:
-# the theme's colors, the logo and the installers themselves.
+# What they were last built from is kept as a checksum in /etc/hyprdori/boot-theme: the
+# theme's colors, the logo and the installers themselves.
 
 # -h, --help: the comment above, then nothing else runs
 case ${1:-} in -h | --help) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; exit 0 ;; esac
@@ -26,7 +28,10 @@ set -euo pipefail
 self=$(readlink -f "$0")
 scripts=$(dirname "$self")
 hyprdori=$(cd "$scripts/../../.." && pwd)
-stamp=/var/lib/hyprdori/boot-theme
+stamp=/etc/hyprdori/boot-theme
+# where it was kept before, read until the next update writes the new one
+old_stamp=/var/lib/hyprdori/boot-theme
+installed() { "$scripts/hyprdori-installed" "$1"; }
 
 note() { printf '%s\n' "$1"; [[ ! -t 1 ]] && "$HOME/.local/bin/hyprdori-notify" boot "$1" 2>/dev/null; true; }
 
@@ -45,26 +50,27 @@ if [[ ${1:-} == --as-root ]]; then
     home=$(getent passwd "$user" | cut -d: -f6)
     export SUDO_USER=$user
     shift 2
-    "$hyprdori/plymouth/install.sh" "$@"
+    installed splash && "$hyprdori/plymouth/install.sh" "$@"
     # Limine with the options it was installed with (hyprdori-update does the same)
-    options=()
-    for conf in /efi/limine.conf /efi/EFI/limine/limine.conf; do
-        if [[ -r $conf ]]; then
-            read -ra options <<<"$(sed -n 's/^# Options: //p' "$conf")"
-            break
-        fi
-    done
-    "$hyprdori/limine/install.sh" "${options[@]}"
+    if installed menu; then
+        options=()
+        for conf in /efi/limine.conf /efi/EFI/limine/limine.conf; do
+            if [[ -r $conf ]]; then
+                read -ra options <<<"$(sed -n 's/^# Options: //p' "$conf")"
+                break
+            fi
+        done
+        "$hyprdori/limine/install.sh" "${options[@]}"
+    fi
     # the login screen's layout, once sddm/install.sh has set it up; its colors are in
     # /var/lib/hyprdori/theme.conf, which the theme writes itself
     if [[ -d /usr/share/sddm/themes/hyprdori ]]; then
         install -m 0644 "$hyprdori"/sddm/hyprdori/*.qml "$hyprdori"/sddm/hyprdori/metadata.desktop \
             "$hyprdori"/sddm/hyprdori/theme.conf /usr/share/sddm/themes/hyprdori/
     fi
-    if [[ -d ${stamp%/*} ]]; then
-        fingerprint "$home" >"$stamp"
-        chown "$user" "$stamp"
-    fi
+    install -d -m 0755 "${stamp%/*}"
+    fingerprint "$home" >"$stamp"
+    rm -f "$old_stamp"
     exit 0
 fi
 
@@ -113,14 +119,20 @@ fi
 # --- User part -----------------------------------------------------------------------------------
 ((EUID != 0)) || { echo "Run this as yourself; it asks for the password itself." >&2; exit 1; }
 current=$(fingerprint "$HOME")
-installed=$(cat "$stamp" 2>/dev/null || true)
+built=$(cat "$stamp" 2>/dev/null || cat "$old_stamp" 2>/dev/null || true)
+# Neither the splash nor the menu here: nothing to update
+if ! installed splash && ! installed menu; then
+    [[ $action == check ]] && exit 1
+    note "No boot splash or menu of Hyprdori's on this machine: nothing to update."
+    exit 0
+fi
 
 if [[ $action == check ]]; then
-    [[ $current != "$installed" ]]
+    [[ $current != "$built" ]]
     exit
 fi
 
-if [[ $action != force && $current == "$installed" ]]; then
+if [[ $action != force && $current == "$built" ]]; then
     note "The boot screens already match the theme."
     exit 0
 fi

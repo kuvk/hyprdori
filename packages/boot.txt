@@ -1,0 +1,17 @@
+# The boot menu, the boot splash and the login screen: each installed only when chosen
+# (install.sh asks; hyprdori-installed says which a machine has). Packages go under the part
+# they belong to; a part named with "+" needs all of them chosen. One package per line; "# AUR"
+# marks AUR packages.
+
+[menu]                   # the boot menu: Limine on the ESP at /efi, its UEFI boot entry
+limine
+efibootmgr
+
+[splash]                 # the boot splash
+plymouth
+
+[login]                  # the login screen
+sddm
+
+[menu+snapshots]         # the boot menu's Snapshots (a btrfs root)
+limine-snapper-sync      # AUR, built with GraalVM (a ~300 MB download, minutes)

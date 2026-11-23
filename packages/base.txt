@@ -1,0 +1,7 @@
+# What install.sh expects the Arch install to have already: it checks them first and stops,
+# naming what's missing, before changing anything. Whatever the install itself needs to boot
+# (the CPU's microcode, cryptsetup and lvm2 for encrypted drives or LVM, the bootloader) is the
+# install's own. A user who can use sudo, and the network up, are needed too.
+base
+sudo
+linux-firmware

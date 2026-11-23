@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Which of Hyprdori's boot and login parts this machine has, answered in one place. Each is set
+# up only when chosen at install (packages/boot.txt), and each leaves a mark this reads, so a
+# script asks `hyprdori-installed menu && ...`; with several, all must hold. Nothing is cached: a
+# check is a file or two read.
+#
+#   hyprdori-installed           each part, a line each: yes or no
+#   hyprdori-installed PART...   exit 0 when every PART is set up:
+#                                  menu    the boot menu: Limine, its menu written by
+#                                          limine/install.sh (/efi/limine.conf)
+#                                  splash  the boot splash: Plymouth with Hyprdori's theme and
+#                                          its hook in the initramfs
+#                                  login   the login screen: SDDM with Hyprdori's settings
+
+# -h, --help: the comment above, then nothing else runs
+case ${1:-} in -h | --help) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; exit 0 ;; esac
+set -uo pipefail
+
+parts=(menu splash login)
+has() {
+    case $1 in
+        menu) grep -qs '^# Written by limine/install.sh' /efi/limine.conf /efi/EFI/limine/limine.conf ;;
+        splash)
+            [[ -f /usr/share/plymouth/themes/hyprdori/hyprdori.plymouth ]] &&
+                grep -qE '^HOOKS=.*\bplymouth\b' /etc/mkinitcpio.conf
+            ;;
+        login) [[ -f /etc/sddm.conf.d/hyprdori.conf ]] ;;
+        *) echo "hyprdori-installed: no part '$1' (${parts[*]})" >&2; exit 2 ;;
+    esac
+}
+
+if (($# == 0)); then
+    for part in "${parts[@]}"; do
+        if has "$part"; then echo "$part: yes"; else echo "$part: no"; fi
+    done
+    exit 0
+fi
+for part in "$@"; do
+    has "$part" || exit 1
+done
+exit 0

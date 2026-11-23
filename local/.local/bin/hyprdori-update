@@ -174,10 +174,11 @@ if command -v flatpak >/dev/null; then
 fi
 
 # --- Limine: its EFI file and menu entries follow the package and the kernels in /efi/arch ---
-# the menu: /efi/limine.conf, or where it was before snapshots (EFI/limine)
+# Only Hyprdori's menu (hyprdori-installed): a Limine set up otherwise keeps its own. The menu:
+# /efi/limine.conf, or where it was before snapshots (EFI/limine)
 conf=/efi/limine.conf
 [[ -r $conf ]] || conf=/efi/EFI/limine/limine.conf
-if [[ -r $conf ]]; then
+if "$bin/hyprdori-installed" menu && [[ -r $conf ]]; then
     step "Limine"
     reasons=()
     cmp -s /usr/share/limine/BOOTX64.EFI /efi/EFI/limine/BOOTX64.EFI || reasons+=("a new Limine")

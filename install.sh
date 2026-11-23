@@ -1,20 +1,22 @@
 #!/usr/bin/env bash
-# Sets up Hyprdori on a fresh Arch install. Run it as the user, not root (it asks for sudo) after
-# the first boot, from a console or any session, with the network up:
+# Sets up Hyprdori on an Arch install. Run it as the user, not root (it asks for sudo) after the
+# first boot, from a console or any session, with the network up; boot.sh clones the repo to
+# ~/.src/hyprdori and runs it:
 #
-#   git clone https://github.com/kuvk/hyprdori ~/hyprdori && ~/hyprdori/install.sh
+#   curl -fsSL https://raw.githubusercontent.com/kuvk/hyprdori/main/boot.sh | bash
 #
-# Expects what the Arch install leaves: base, linux-firmware, microcode, a user with sudo,
-# the ESP mounted at /efi, and for encrypted drives the systemd initramfs (the systemd and
-# sd-encrypt hooks, rd.luks.name= in the kernel options). Safe to run again: each step skips
-# what's already done.
+# Expects only what packages/base.txt lists, and a user with sudo. Any boot loader, login
+# screen, file system and drive layout, encrypted or not: Hyprdori's boot menu (Limine), boot
+# splash (Plymouth) and login screen (SDDM) are each asked about, on by default where nothing
+# else is in their place. Safe to run again: each step skips what's already done. What it
+# changes outside the home folder and what it installs is written to /etc/hyprdori/install.log,
+# which uninstall.sh reads.
 #
 # Steps: pacman.conf (multilib, the g14 repo on ASUS laptops), mirrors (reflector), config links
 # (stow; files in the way go to ~/.hyprdori-backup), packages (packages/*.txt by detected
-# hardware, packages/guest.txt in a virtual machine), Flatpak, services, zsh and its plugins,
-# the theme, snapshots on a btrfs root (snapper, limine-snapper-sync), then boot:
-# initramfs and kernel options, Plymouth, Limine. The login screen (SDDM) comes with the theme, or autologin if chosen (the
-# default with encrypted drives).
+# hardware and answers), Flatpak, services, zsh and its plugins, the theme (and the login screen,
+# with autologin if chosen), snapshots on a btrfs root (snapper), then boot: the initramfs, the
+# splash, the menu and its kernel options.
 #
 #   install.sh --dry-run   what an install would do on this machine, and nothing done: the same
 #                          questions (their defaults, when not run in a terminal), then the
@@ -73,6 +75,7 @@ wanted_packages() {
         for group in "${groups[@]}"; do
             while read -r name; do is_flathub "$name" || echo "$name"; done < <(list "$group")
         done
+        boot_packages
     } | sort -u
 }
 # The packages the config can't do without: core.txt and the lists the hardware picked (the GPU's
@@ -81,11 +84,44 @@ wanted_packages() {
 needed_lists=(core guest nvidia intel amd hybrid)
 needed_packages() {
     local group name
-    for group in "${groups[@]}"; do
-        [[ " ${needed_lists[*]} " == *" $group "* ]] || continue
-        while read -r name; do is_flathub "$name" || echo "$name"; done < <(list "$group")
-    done | sort -u
+    {
+        for group in "${groups[@]}"; do
+            [[ " ${needed_lists[*]} " == *" $group "* ]] || continue
+            while read -r name; do is_flathub "$name" || echo "$name"; done < <(list "$group")
+        done
+        boot_packages needed
+    } | sort -u
 }
+# The packages of the chosen boot parts (packages/boot.txt): a section names a part, or parts
+# joined by "+" that must all be chosen. With "needed", only the one-part sections: a part's own
+# packages, without which the install stops
+boot_packages() {
+    local chosen=" ${parts[*]} " section= line name part ok need=()
+    while IFS= read -r line; do
+        line=${line%%#*}
+        if [[ $line =~ ^\[([a-z+]+)\] ]]; then
+            section=${BASH_REMATCH[1]}
+            continue
+        fi
+        name=${line//[[:space:]]/}
+        [[ -n $name && -n $section ]] || continue
+        [[ ${1:-} == needed && $section == *+* ]] && continue
+        ok=true
+        IFS=+ read -ra need <<<"$section"
+        for part in "${need[@]}"; do [[ $chosen == *" $part "* ]] || ok=false; done
+        $ok && echo "$name"
+    done <"$hyprdori/packages/boot.txt"
+    return 0
+}
+# What this changes outside the home folder, and what it installs, a line each, so uninstall.sh
+# undoes exactly that (and offers to remove exactly those packages)
+ledger=/etc/hyprdori/install.log
+record() {
+    $dry && return 0
+    printf '%s %s\n' "$(date +%F)" "$*" | sudo tee -a "$ledger" >/dev/null
+}
+# A file on the ESP or in /boot, which may be readable by root only
+on_esp() { [[ -e $1 ]] || { ! $dry && sudo test -e "$1"; } 2>/dev/null; }
 # Every Flathub app: flatpak.txt if chosen, and the ones in the chosen lists
 wanted_flatpaks() {
     local name
@@ -98,7 +134,8 @@ wanted_flatpaks() {
 }
 # The system services enabled for the chosen lists
 services_for() {
-    local services=(NetworkManager bluetooth power-profiles-daemon sddm fstrim.timer)
+    local services=(NetworkManager bluetooth power-profiles-daemon fstrim.timer)
+    [[ $login == sddm ]] && services+=(sddm)
     if [[ " ${groups[*]} " == *" nvidia "* ]]; then
         services+=(nvidia-suspend nvidia-hibernate nvidia-resume)
         $laptop && services+=(nvidia-powerd)
@@ -147,17 +184,23 @@ dry_report() {
     step "Services"
     mapfile -t names < <(services_for)
     echo "Would enable: ${names[*]}, and the weekly update check"
+    [[ $login == sddm && -n $dm && $dm != sddm ]] && echo "Would turn off $dm (SDDM takes its place)"
     step "Snapshots"
-    $snapshots && echo "snapper for /, the newest 5 update snapshots kept, in the boot menu" || echo "None."
-    step "Boot"
-    if ! mountpoint -q /efi; then
-        echo "The ESP isn't mounted at /efi: Plymouth and Limine would be skipped."
-    elif ! grep -qE '^HOOKS=\(.*\bsystemd\b' /etc/mkinitcpio.conf; then
-        echo "The initramfs doesn't use the systemd hook: Plymouth and Limine would be skipped."
+    if $snapshots; then
+        echo "snapper for /, the newest 5 update snapshots kept$($menu && echo ", in the boot menu")"
     else
-        echo "The initramfs, the kernel options, Plymouth and Limine would be set up."
+        echo "None."
+    fi
+    step "Boot"
+    echo "ESP: ${esp_at:-none found}; other boot loaders: ${other_loaders[*]:-none found}; login screen: ${dm:-none}"
+    echo "Login screen: $(case $login in sddm) echo "Hyprdori's (SDDM)" ;; kept) echo "$dm, as it is" ;; *) echo "none (Hyprland started from the console)" ;; esac)"
+    echo "Boot splash: $($splash && echo "Plymouth, its hook in the initramfs" || echo none)"
+    if $menu; then
+        echo "Boot menu: Limine, kernels and images moved to /efi/arch, the kernel options in /etc/kernel/cmdline"
         [[ -e /etc/hyprdori/limine-entries.conf ]] ||
             echo "Would make /etc/hyprdori/limine-entries.conf (other systems' boot entries; only comments)"
+    else
+        echo "Boot menu: left as it is${other_loaders:+ (${other_loaders[*]})}$($splash && echo "; the splash's kernel options are printed, to add to it")"
     fi
     echo
     echo "Nothing was changed."
@@ -166,6 +209,12 @@ dry_report() {
 # --- Checks -------------------------------------------------------------------------------------
 ((EUID != 0)) || { echo "Run this as yourself, not root: it asks for sudo when needed." >&2; exit 1; }
 [[ -f /etc/arch-release ]] || { echo "This is for Arch Linux." >&2; exit 1; }
+missing=()
+while read -r pkg; do pacman -Q "$pkg" &>/dev/null || missing+=("$pkg"); done < <(list base)
+if ((${#missing[@]})); then
+    echo "The Arch install is missing ${missing[*]} (packages/base.txt): sudo pacman -S ${missing[*]}, then run this again." >&2
+    exit 1
+fi
 curl -fsI --max-time 10 https://archlinux.org >/dev/null || { echo "No internet connection." >&2; exit 1; }
 # awake while it runs (on battery it asks first), then the password once: sudo keeps it until
 # the install ends, however long the downloads take
@@ -173,7 +222,14 @@ if ! $dry; then
     "$hyprdori/local/.local/bin/hyprdori-awake" $$ "the install" || { echo "Nothing installed."; exit 0; }
     export HYPRDORI_AWAKE_ASKED=1
     "$hyprdori/local/.local/bin/hyprdori-sudo-hold" $$ || { echo "No password, nothing installed." >&2; exit 1; }
+    sudo install -d -m 0755 /etc/hyprdori
 fi
+# What's installed before, so the record names only what this run adds
+before=$(mktemp)
+pacman -Qq | sort >"$before"
+flatpaks_before=$(mktemp)
+command -v flatpak >/dev/null && flatpak list --app --columns=application 2>/dev/null | sort >"$flatpaks_before"
+trap 'rm -f "$before" "$flatpaks_before"' EXIT
 
 # --- Hardware -----------------------------------------------------------------------------------
 # hyprdori-hw answers what the machine is (from the repo: nothing is linked yet)
@@ -222,18 +278,89 @@ ask "Flatpak apps (packages/flatpak.txt)?" y && flatpak=true
 browser_font=true
 ask "Browsers: should their tabs, address bar and menus follow the font everything else uses (also monospace, if you turn that on)?" y ||
 browser_font=false
-# A btrfs root laid out as the install guide's (@ and @snapshots): snapshots, also in the boot menu
+# The boot menu, splash and login screen (packages/boot.txt): each only when chosen, and kept
+# once set up (uninstall.sh removes them). What's there already picks the defaults
+installed() { "$hyprdori/local/.local/bin/hyprdori-installed" "$1"; }
+# the ESP (Hyprdori's menu and its kernels go on the one at /efi)
+esp_at=
+for dir in /efi /boot /boot/efi; do
+    [[ $(findmnt -no FSTYPE "$dir" 2>/dev/null) == vfat ]] && { esp_at=$dir; break; }
+done
+# other boot loaders, by what they leave on the ESP or in /boot; a Limine set up otherwise keeps
+# its own menu. Two Limine menus are Hyprdori's to replace: the first-boot one from the install
+# guide (docs/arch-install.md) and uninstall.sh's plain one, each saying so in its first lines
+other_loaders=() own_limine=false
+replaceable='install.sh replaces this menu|limine/install.sh --plain'
+for dir in /efi /boot /boot/efi; do
+    mountpoint -q "$dir" || continue
+    on_esp "$dir/EFI/systemd/systemd-bootx64.efi" && other_loaders+=(systemd-boot)
+    on_esp "$dir/EFI/refind/refind_x64.efi" && other_loaders+=(rEFInd)
+    if ! installed menu; then
+        for file in limine.conf limine/limine.conf EFI/limine/limine.conf EFI/BOOT/limine.conf; do
+            on_esp "$dir/$file" || continue
+            { grep -qsE "$replaceable" "$dir/$file" || { ! $dry && sudo grep -qsE "$replaceable" "$dir/$file"; }; } ||
+                own_limine=true
+        done
+    fi
+done
+[[ -e /boot/grub/grub.cfg ]] && other_loaders+=(GRUB)
+$own_limine && other_loaders+=(Limine)
+mapfile -t other_loaders < <(printf '%s\n' "${other_loaders[@]}" | sed '/^$/d' | sort -u)
+# the login screen systemd starts (display-manager.service names it)
+dm=$(readlink /etc/systemd/system/display-manager.service 2>/dev/null) || dm=
+dm=${dm##*/}
+dm=${dm%.service}
+
+parts=()
+login=none
+if installed login; then
+    login=sddm
+elif [[ $dm == sddm ]]; then
+    login=kept
+    ask "Login screen: SDDM in Hyprdori's look and settings? (No: SDDM stays as it is)" y && login=sddm
+elif [[ -n $dm ]]; then
+    login=kept
+    ask "Login screen: keep $dm? (No: Hyprdori's, SDDM in the theme's colors, takes its place)" y || login=sddm
+elif ask "Login screen: Hyprdori's, SDDM in the theme's colors? (No: none; Hyprland is started from the console)" y; then
+    login=sddm
+fi
+[[ $login == sddm ]] && parts+=(login)
+splash=false
+if installed splash; then
+    splash=true
+elif [[ ! -f /etc/mkinitcpio.conf ]]; then
+    note "Boot splash: the initramfs isn't made by mkinitcpio here; no splash."
+elif ask "Boot splash: Plymouth in the theme's colors, with the password field for encrypted drives?" y; then
+    splash=true
+fi
+$splash && parts+=(splash)
+menu=false
+if installed menu; then
+    menu=true
+elif $own_limine; then
+    note "Boot menu: Limine is set up here with its own menu; it's left as it is."
+elif [[ $esp_at != /efi ]]; then
+    note "Boot menu: Limine needs the ESP at /efi (${esp_at:-none found}); the boot loader stays as it is."
+elif ((${#other_loaders[@]})); then
+    ask "Boot menu: Limine in the theme's colors, first in the boot order? (No: ${other_loaders[*]} stays the boot menu; it stays installed either way)" n && menu=true
+else
+    ask "Boot menu: Limine in the theme's colors?" y && menu=true
+fi
+$menu && parts+=(menu)
+# A btrfs root laid out as the install guide's (@ and @snapshots): snapshots, also in the boot
+# menu when it's Limine
 snapshots=false
 if "$hw" btrfs &&
-ask "Snapshots: before and after every update, bootable from the boot menu (packages/snapshots.txt)?" y; then
+ask "Snapshots: before and after every update$($menu && echo ", bootable from the boot menu") (packages/snapshots.txt)?" y; then
     snapshots=true
     groups+=(snapshots)
+    parts+=(snapshots)
 fi
 # With encrypted drives the disk password already guards the machine, so autologin is the default
 encrypted=n
 "$hw" encrypted && encrypted=y
 autologin=--no-autologin
-if ask "Log in automatically, without the login screen (autologin)?" "$encrypted"; then
+if [[ $login == sddm ]] && ask "Log in automatically, without the login screen (autologin)?" "$encrypted"; then
     autologin=--autologin
     note "Autologin: the disk password is the only one at boot; your account's password still unlocks the
 lock screen and sudo. The keyring (saved browser and app passwords) isn't unlocked by a login: the
@@ -242,7 +369,7 @@ encrypted disk still protects it)."
 fi
 
 echo
-echo "Package lists: ${groups[*]}$($flatpak && echo ", flatpak")$([[ $autologin == --autologin ]] && echo "; autologin")"
+echo "Package lists: ${groups[*]}$($flatpak && echo ", flatpak"); boot parts: ${parts[*]:-none}$([[ $autologin == --autologin ]] && echo "; autologin")"
 if $dry; then
     dry_report
     exit 0
@@ -252,7 +379,7 @@ ask "Continue?" y || exit 0
 # --- pacman.conf ----------------------------------------------------------------------------------
 step "pacman.conf"
 conf=/etc/pacman.conf
-sudo cp -n "$conf" "$conf.bak"
+[[ -e $conf.bak ]] || { sudo cp "$conf" "$conf.bak" && record backup "$conf" "$conf.bak"; }
 # multilib (Steam, lib32 drivers), colors, parallel downloads
 sudo sed -i -e '/^#\[multilib\]$/,/^#Include/ s/^#//' \
     -e 's/^#Color$/Color/' -e 's/^#ParallelDownloads.*/ParallelDownloads = 5/' "$conf"
@@ -271,6 +398,7 @@ step "Mirrors"
 sudo pacman -Syu --needed --noconfirm reflector
 if [[ ! -f /etc/pacman.d/mirrorlist.bak ]]; then
     sudo cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
+    record backup /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
     sudo tee /etc/xdg/reflector/reflector.conf >/dev/null <<'EOF'
 # reflector.timer runs this weekly (installed by install.sh)
 --save /etc/pacman.d/mirrorlist
@@ -295,7 +423,7 @@ while IFS= read -r -d '' rel; do
     mv "$HOME/$rel" "$backup/$rel"
     moved=$((moved + 1))
 done < <(in_the_way)
-((moved)) && note "Moved $moved file(s) that were in the way to $backup"
+((moved)) && note "Moved $moved file(s) that were in the way to $backup" && record home-backup "$backup"
 # Folders apps write into themselves made real first, so stow links the files in them rather
 # than the whole folder into the repo: systemd keeps its timers' state next to the user units,
 # hyprdori-webapp writes web apps' entries, herdr its sessions, plugins and logs, and
@@ -380,10 +508,21 @@ fi
 # --- Services, shell, theme -------------------------------------------------------------------------------
 step "Services"
 mapfile -t services < <(services_for)
+# Hyprdori's login screen in place of another: that one is turned off first (systemd starts one)
+if [[ $login == sddm && -n $dm && $dm != sddm ]]; then
+    sudo systemctl disable "$dm.service" &>/dev/null && record disable "$dm.service" && echo "Turned off $dm (SDDM takes its place)"
+fi
 vm=false
 [[ " ${groups[*]} " == *" vm "* ]] && vm=true
 for unit in "${services[@]}"; do
-    if sudo systemctl enable "$unit" &>/dev/null; then echo "Enabled $unit"; else note "Couldn't enable $unit"; fi
+    if systemctl is-enabled -q "$unit" 2>/dev/null; then
+        echo "Enabled already: $unit"
+    elif sudo systemctl enable "$unit" &>/dev/null; then
+        echo "Enabled $unit"
+        record enable "$unit"
+    else
+        note "Couldn't enable $unit"
+    fi
 done
 # Per user: the weekly update check (Saturdays; a notification when updates wait), linked from bin
 systemctl --user daemon-reload
@@ -394,6 +533,7 @@ else
 fi
 # The lock screen gets up to 15 s, not logind's 5, to come up before a suspend
 # (hyprdori-sleep-lock). logind reads it on reload.
+[[ -e /etc/systemd/logind.conf.d/20-inhibit-delay.conf ]] || record file /etc/systemd/logind.conf.d/20-inhibit-delay.conf
 sudo install -Dm644 /dev/stdin /etc/systemd/logind.conf.d/20-inhibit-delay.conf <<'EOF'
 [Login]
 InhibitDelayMaxSec=15
@@ -408,7 +548,8 @@ if $vm; then
 fi
 
 step "Shell"
-if [[ $(getent passwd "$USER" | cut -d: -f7) != /usr/bin/zsh ]]; then
+if [[ $(getent passwd "$USER" | cut -d: -f7) != */zsh ]]; then
+    record shell "$(getent passwd "$USER" | cut -d: -f7)"
     sudo chsh -s /usr/bin/zsh "$USER"
 else
     echo "Already zsh."
@@ -430,8 +571,8 @@ if command -v nvim >/dev/null; then
 fi
 
 step "Theme"
-# The login screen first: hyprdori-theme-set writes its colors to the folder this makes
-sudo "$hyprdori/sddm/install.sh" "$autologin" >/dev/null
+# The login screen first (when chosen): hyprdori-theme-set writes its colors to the folder this makes
+[[ $login == sddm ]] && sudo "$hyprdori/sddm/install.sh" "$autologin" >/dev/null
 # tmux's theme plugin (.tmux.conf would clone it on first start), so hyprdori-theme-set can write
 # the theme's colors into it now
 tmux_theme="$HOME/.tmux/plugins/catppuccin/tmux"
@@ -440,7 +581,7 @@ tmux_theme="$HOME/.tmux/plugins/catppuccin/tmux"
 # browser; hyprdori-browser set changes it), images in swayimg, PDFs in zathura, video and
 # sound in VLC. The file is the machine's own afterwards: an existing one is left as it is
 mimeapps=${XDG_CONFIG_HOME:-$HOME/.config}/mimeapps.list
-[[ -e $mimeapps ]] || install -Dm644 "$hyprdori/packages/mimeapps.list" "$mimeapps"
+[[ -e $mimeapps ]] || { install -Dm644 "$hyprdori/packages/mimeapps.list" "$mimeapps" && record file "$mimeapps"; }
 # The browsers' color policy helper, so the theme below colors the Chromium-based browsers too
 sudo "$HOME/.local/bin/hyprdori-browser-theme-setup" >/dev/null
 # and the browsers' font, as answered above (no sudo: a per-user setting)
@@ -454,6 +595,8 @@ sudo "$HOME/.local/bin/hyprdori-browser-theme-setup" >/dev/null
 wall=$(jq -r '.background // empty' "$HOME/.config/theme/current/quickshell.json" 2>/dev/null) || wall=
 "$HOME/.local/bin/hyprdori-wallpaper" default ${wall:+"$wall"}
 
+# The initramfs is built again at the end when a step below changes what goes into it
+rebuild=false
 # --- Snapshots: snapper on @snapshots, limine-snapper-sync, read-only snapshots with an overlay -------------
 if $snapshots && command -v snapper >/dev/null; then
     step "Snapshots"
@@ -483,7 +626,9 @@ if $snapshots && command -v snapper >/dev/null; then
     # place), booted read-only with a throwaway layer on top (systemd.volatile=overlay: the
     # initramfs gets systemd's volatile-root service, which the systemd hook leaves out, and the
     # overlay module), restored with limine-snapper-restore
-    if command -v limine-snapper-sync >/dev/null; then
+    if $menu && command -v limine-snapper-sync >/dev/null; then
+        record file /etc/default/limine
+        record file /etc/mkinitcpio.conf.d/snapshots.conf
         sudo tee /etc/default/limine >/dev/null <<CONF
 # limine-snapper-sync, written by Hyprdori's install.sh
 ESP_PATH="/efi"
@@ -506,8 +651,9 @@ BINARIES+=(/usr/lib/systemd/systemd-volatile-root)
 FILES+=(/usr/lib/systemd/system/systemd-volatile-root.service)
 CONF
         sudo systemctl enable limine-snapper-sync.service
+        rebuild=true
         echo "Snapshots in the boot menu (/etc/default/limine, /etc/mkinitcpio.conf.d/snapshots.conf)"
-    else
+    elif $menu; then
         note "limine-snapper-sync isn't installed: snapshots are taken, but not in the boot menu."
     fi
     # Copy-on-write off where VM disks and Docker's data go (files made after this)
@@ -515,24 +661,74 @@ CONF
     sudo chattr +C /var/lib/libvirt/images /var/lib/docker
 fi
 
-# --- Boot: initramfs, kernel options, splash, menu -------------------------------------------------------------
+# --- Boot: initramfs, splash, menu and its kernel options ------------------------------------------------
 step "Boot"
-boot=true
-if ! mountpoint -q /efi; then
-    note "The ESP isn't mounted at /efi; skipping Plymouth and Limine."
-    boot=false
-elif ! grep -qE '^HOOKS=\(.*\bsystemd\b' /etc/mkinitcpio.conf; then
-    note "The initramfs doesn't use the systemd hook (needed for the splash's password field); skipping Plymouth and Limine."
-    boot=false
+mkinit=/etc/mkinitcpio.conf
+# GPU drivers in the initramfs, named rather than the kms hook's (every built-in driver, but not
+# NVIDIA's DKMS modules): the boot screen's GPU for the splash, and NVIDIA's on any machine with
+# an NVIDIA card, also a hybrid laptop. Loaded later, it can appear after the login screen's
+# Hyprland has started, which doesn't survive a new GPU. NVIDIA's firmware makes the images
+# about 150 MB each.
+if [[ -f $mkinit ]] && { $splash || [[ $login == sddm ]]; }; then
+    [[ -e $mkinit.bak ]] || { sudo cp "$mkinit" "$mkinit.bak" && record backup "$mkinit" "$mkinit.bak"; }
+    if grep -q '^MODULES=()' "$mkinit"; then
+        case $boot_gpu in
+            0x8086) modules=${boot_driver:-i915}; [[ $modules == xe ]] || modules=i915 ;;
+            0x1002) modules=amdgpu ;;
+            *) modules= ;;
+        esac
+        [[ -n $modules ]] && sudo sed -i "s/^MODULES=()/MODULES=($modules)/" "$mkinit" && echo "MODULES=($modules)" && rebuild=true
+    fi
+    if has_gpu 0x10de && [[ ! -f /etc/mkinitcpio.conf.d/nvidia.conf ]]; then
+        sudo install -d /etc/mkinitcpio.conf.d
+        echo 'MODULES+=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)' | sudo tee /etc/mkinitcpio.conf.d/nvidia.conf >/dev/null
+        record file /etc/mkinitcpio.conf.d/nvidia.conf
+        echo "NVIDIA in the initramfs (/etc/mkinitcpio.conf.d/nvidia.conf)"
+        rebuild=true
+    fi
+    if grep -qE '^HOOKS=.*\bkms\b' "$mkinit" && { grep -qE '^MODULES=\(.+\)' "$mkinit" || [[ -f /etc/mkinitcpio.conf.d/nvidia.conf ]]; }; then
+        sudo sed -i -E '/^HOOKS=/{s/ kms\b//}' "$mkinit"
+        rebuild=true
+    fi
+fi
+# The splash's hook, right after the one that starts udev: systemd's, or busybox's udev (the
+# disk password then goes through Plymouth with either encrypt hook)
+if $splash && ! grep -qE '^HOOKS=.*\bplymouth\b' "$mkinit"; then
+    if grep -qE '^HOOKS=\(.*\bsystemd\b' "$mkinit"; then
+        sudo sed -i -E '/^HOOKS=/s/\bsystemd\b/systemd plymouth/' "$mkinit"
+    elif grep -qE '^HOOKS=\(.*\budev\b' "$mkinit"; then
+        sudo sed -i -E '/^HOOKS=/s/\budev\b/udev plymouth/' "$mkinit"
+    else
+        note "The initramfs has neither the systemd nor the udev hook; no splash."
+        splash=false
+    fi
+    $splash && record hook plymouth
 fi
 
-if $boot; then
+# Kernel options: a quiet boot and shutdown (no kernel or systemd status text, no console
+# cursor); with the splash, the splash itself, the unlock limits that luks-poweroff relies on
+# (90 seconds or three tries, then power off: systemd's unlock), and two against boot hangs
+# under Plymouth: since kernel 7.1 the initramfs is unpacked while /init already runs, which can
+# make Plymouth quit (the disk password asked in plain text); since systemd 257 it asks the
+# console its size and can wait for a reply that never comes under Plymouth (a black screen at
+# "Starting Switch Root" until a key is pressed)
+running=$(sed -E 's/(^| )(BOOT_IMAGE|initrd)=[^ ]*//g; s/^ +//' /proc/cmdline)
+extra=(quiet loglevel=3 systemd.show_status=false vt.global_cursor_default=0)
+if $splash; then
+    extra+=(splash initramfs_async=0 systemd.tty.term.console=dumb)
+    if [[ $running == *rd.luks.name=* ]] && grep -qE '^HOOKS=.*\bsd-encrypt\b' "$mkinit"; then
+        extra+=(rd.luks.options=timeout=90s,tries=3 systemd.default_device_timeout_sec=infinity)
+    fi
+fi
+has_option() { [[ " $1 " == *" ${2%%=*}="* || " $1 " == *" $2 "* ]]; }
+
+if $menu; then
     # Kernels and images on the ESP, where Limine can read them (it reads only FAT)
     sudo install -d /efi/arch
     for preset in /etc/mkinitcpio.d/*.preset; do
         kernel=$(basename "$preset" .preset)
         grep -q '^ALL_kver="/efi/arch/' "$preset" && continue
-        sudo cp -n "$preset" "$preset.bak"
+        [[ -e $preset.bak ]] || { sudo cp "$preset" "$preset.bak" && record backup "$preset" "$preset.bak"; }
         sudo tee "$preset" >/dev/null <<EOF
 # mkinitcpio preset for $kernel; the kernel and image go to the ESP (install.sh)
 ALL_kver="/efi/arch/vmlinuz-$kernel"
@@ -540,71 +736,63 @@ PRESETS=('default')
 default_image="/efi/arch/initramfs-$kernel.img"
 EOF
         echo "$kernel: kernel and image now go to /efi/arch"
+        rebuild=true
     done
-
-    # GPU drivers in the initramfs, named rather than the kms hook's (every built-in driver,
-    # but not NVIDIA's DKMS modules): the boot screen's GPU for the splash, and NVIDIA's on any
-    # machine with an NVIDIA card, also a hybrid laptop. Loaded later, it can appear after the
-    # login screen's Hyprland has started, which doesn't survive a new GPU. NVIDIA's firmware
-    # makes the images about 150 MB each.
-    mkinit=/etc/mkinitcpio.conf
-    sudo cp -n "$mkinit" "$mkinit.bak"
-    if grep -q '^MODULES=()' "$mkinit"; then
-        case $boot_gpu in
-            0x8086) modules=${boot_driver:-i915}; [[ $modules == xe ]] || modules=i915 ;;
-            0x1002) modules=amdgpu ;;
-            *) modules= ;;
-        esac
-        [[ -n $modules ]] && sudo sed -i "s/^MODULES=()/MODULES=($modules)/" "$mkinit" && echo "MODULES=($modules)"
-    fi
-    if has_gpu 0x10de; then
-        sudo install -d /etc/mkinitcpio.conf.d
-        echo 'MODULES+=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)' | sudo tee /etc/mkinitcpio.conf.d/nvidia.conf >/dev/null
-        echo "NVIDIA in the initramfs (/etc/mkinitcpio.conf.d/nvidia.conf)"
-    fi
-    if grep -qE '^MODULES=\(.+\)' "$mkinit" || [[ -f /etc/mkinitcpio.conf.d/nvidia.conf ]]; then
-        sudo sed -i -E '/^HOOKS=/{s/ kms\b//}' "$mkinit"
-    fi
-    grep -qE '^HOOKS=.*\bplymouth\b' "$mkinit" || sudo sed -i -E '/^HOOKS=/s/\bsystemd\b/systemd plymouth/' "$mkinit"
-
-    # Kernel options: the running system's, plus a quiet boot, plus the unlock limits that
-    # luks-poweroff relies on (90 seconds or three tries, then power off)
+    # Limine's kernel options: the running system's, plus the ones above
     if [[ ! -s /etc/kernel/cmdline ]]; then
-        sed -E 's/(^| )(BOOT_IMAGE|initrd)=[^ ]*//g; s/^ +//' /proc/cmdline | sudo tee /etc/kernel/cmdline >/dev/null
+        echo "$running" | sudo tee /etc/kernel/cmdline >/dev/null
+        record file /etc/kernel/cmdline
     fi
     cmdline=$(cat /etc/kernel/cmdline)
-    # quiet boot and shutdown: no kernel or systemd status text, no console cursor
-    extra=(quiet loglevel=3 splash systemd.show_status=false vt.global_cursor_default=0)
-    if [[ $cmdline == *rd.luks.name=* ]]; then
-        extra+=(rd.luks.options=timeout=90s,tries=3 systemd.default_device_timeout_sec=infinity)
-    fi
-    # Boot hangs with Plymouth: since kernel 7.1 the initramfs is unpacked while /init already
-    # runs, which can make Plymouth quit (the disk password asked in plain text); since systemd
-    # 257 it asks the console its size and can wait for a reply that never comes under Plymouth
-    # (a black screen at "Starting Switch Root" until a key is pressed)
-    extra+=(initramfs_async=0 systemd.tty.term.console=dumb)
     for option in "${extra[@]}"; do
-        [[ " $cmdline " == *" ${option%%=*}="* || " $cmdline " == *" $option "* ]] || cmdline+=" $option"
+        has_option "$cmdline" "$option" && continue
+        cmdline+=" $option"
+        record kernel-option "$option"
     done
     echo "$cmdline" | sudo tee /etc/kernel/cmdline >/dev/null
     echo "Kernel options: $cmdline"
-
     # Other systems' boot menu entries (Windows, another distro, the UEFI shell) go in this
     # file, kept when the menu is written again; made once, with only comments and an example
-    [[ -e /etc/hyprdori/limine-entries.conf ]] ||
+    if [[ ! -e /etc/hyprdori/limine-entries.conf ]]; then
         sudo install -D -m 0644 "$hyprdori/limine/limine-entries.conf" /etc/hyprdori/limine-entries.conf
+    fi
+fi
 
-    # Plymouth builds the initramfs, Limine then finds the kernels in /efi/arch
+# The splash builds the initramfs (and with the menu, the kernels in /efi/arch); without it,
+# changes above are built here. Limine then finds the kernels in /efi/arch
+if $splash; then
     sudo "$hyprdori/plymouth/install.sh" --theme
-    sudo "$hyprdori/limine/install.sh" --theme
+elif $rebuild; then
+    sudo mkinitcpio -P
+fi
+$menu && sudo "$hyprdori/limine/install.sh" --theme
+# Another boot loader keeps its own kernel options: the splash's, printed to add there
+add=()
+if $splash && ! $menu; then
+    for option in "${extra[@]}"; do has_option "$running" "$option" || add+=("$option"); done
+fi
+if ! $splash && ! $menu && ! $rebuild; then
+    echo "No boot splash or menu chosen: the boot is left as it is."
 fi
 
 step "Done"
+# Everything this run installed, explicitly (dependencies go with them on removal)
+while read -r pkg; do record package "$pkg"; done < <(comm -13 "$before" <(pacman -Qqe | sort))
+if command -v flatpak >/dev/null; then
+    while read -r app; do record flatpak "$app"; done < <(comm -13 "$flatpaks_before" <(flatpak list --app --columns=application 2>/dev/null | sort))
+fi
+if ((${#add[@]})); then
+    note "The boot splash needs these kernel options, added to the boot loader's own (${other_loaders[*]:-the boot loader}):
+  ${add[*]}
+GRUB: GRUB_CMDLINE_LINUX_DEFAULT in /etc/default/grub, then sudo grub-mkconfig -o /boot/grub/grub.cfg.
+systemd-boot: the options line of each entry in /boot/loader/entries/ (or /etc/kernel/cmdline for
+unified kernel images, then sudo mkinitcpio -P)."
+fi
+[[ $login == none ]] && note "No login screen: log in on the console and run Hyprland to start the desktop."
 cat <<MSG
-Reboot. The login screen gets your monitor layout by itself, at every login and monitor change.
+Reboot.$([[ $login == sddm ]] && echo " The login screen gets your monitor layout by itself, at every login and monitor change.")
 $(command -v spotify-launcher >/dev/null && printf '\n%s\n' "Spotify follows the theme once you've opened it and logged in: at the next login after that
 it's styled by itself (hyprdori-spicetify; or run that with Spotify closed).")
 
-Backups of what this changed: /etc/pacman.conf.bak, /etc/mkinitcpio.conf.bak, the presets'
-.bak files and /etc/pacman.d/mirrorlist.bak.
+What this changed outside the home folder, and what it installed: $ledger (uninstall.sh undoes it).
 MSG
