@@ -343,7 +343,10 @@ def use_default(path: Path | None = None) -> None:
     if source is None:
         return
     if not CURRENT_LINK.exists():
-        dest = source if source.parent == DIRS["static"] else DIRS["static"] / source.name
+        # used in place anywhere in the static folder: the theme's background is in its own
+        # folder there (backgrounds/default/<theme>), and a copy at the top would be listed for
+        # every theme
+        dest = source if source.is_relative_to(DIRS["static"]) else DIRS["static"] / source.name
         if not dest.exists():
             shutil.copyfile(source, dest)
         STATE_DIR.mkdir(parents=True, exist_ok=True)
