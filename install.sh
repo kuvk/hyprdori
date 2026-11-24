@@ -223,6 +223,20 @@ if ((${#missing[@]})); then
     exit 1
 fi
 curl -fsI --max-time 10 https://archlinux.org >/dev/null || { echo "No internet connection." >&2; exit 1; }
+# Everything it prints goes to a log too, for after: a console has no scrollback. It runs again
+# under script, which keeps the terminal, so pacman still shows its progress (less -R reads it)
+logs=${XDG_STATE_HOME:-$HOME/.local/state}/hyprdori/logs
+if ! $dry && [[ -z ${HYPRDORI_INSTALL_LOG:-} && -t 0 && -t 1 ]] && command -v script >/dev/null; then
+    mkdir -p "$logs"
+    HYPRDORI_INSTALL_LOG=$logs/install-$(date +%F_%H-%M-%S).log
+    export HYPRDORI_INSTALL_LOG
+    # script runs the command with $SHELL: bash for the quoting, the login shell's name kept
+    exec env SHELL=/bin/bash script -qefc \
+        "SHELL=$(printf %q "${SHELL:-/bin/bash}") exec $(printf '%q ' "$0" "$@")" "$HYPRDORI_INSTALL_LOG"
+fi
+# The AUR packages' build files (PKGBUILD and the rest paru would show for review) go next to it
+pkgbuilds=${HYPRDORI_INSTALL_LOG:-$logs/install-$(date +%F_%H-%M-%S).log}
+pkgbuilds=${pkgbuilds%.log}-pkgbuilds
 # awake while it runs (on battery it asks first), then the password once: sudo keeps it until
 # the install ends, however long the downloads take
 if ! $dry; then
@@ -236,7 +250,8 @@ before=$(mktemp)
 pacman -Qq | sort >"$before"
 flatpaks_before=$(mktemp)
 command -v flatpak >/dev/null && flatpak list --app --columns=application 2>/dev/null | sort >"$flatpaks_before"
-trap 'rm -f "$before" "$flatpaks_before"' EXIT
+trap 'rm -f "$before" "$flatpaks_before"
+[[ -n ${HYPRDORI_INSTALL_LOG:-} ]] && printf "\nAll it printed: %s (less -R)\n" "$HYPRDORI_INSTALL_LOG"' EXIT
 
 # --- Hardware -----------------------------------------------------------------------------------
 # hyprdori-hw answers what the machine is (from the repo: nothing is linked yet)
@@ -456,17 +471,28 @@ if ! command -v paru >/dev/null; then
     (cd "$build/paru" && makepkg --noconfirm)
     # paru's package, not the paru-debug one makepkg also builds
     sudo pacman -U --noconfirm "$build"/paru/paru-[0-9]*.pkg.tar.zst
+    mkdir -p "$pkgbuilds/paru"
+    (cd "$build/paru" && git ls-files -z | xargs -0r cp --parents -t "$pkgbuilds/paru")
     rm -rf "$build"
 fi
 mapfile -t wanted < <(wanted_packages)
-# paru installs repo and AUR packages alike, and asks once. When that fails (an AUR package
-# that doesn't build), the missing ones go again and the failures are listed: the install goes on.
+# paru installs repo and AUR packages alike, with no questions: what Enter would pick (the
+# first provider, yes to proceed), and the build files unreviewed (they're kept: see below).
+# When that fails (an AUR package that doesn't build, a conflict with what's installed), the
+# missing ones go again and the failures are listed: the install goes on.
 # The repos' together: a dependency more than one package can fill (jack: pipewire-jack or jack2)
 # is then filled by the one in the lists. One at a time with --noconfirm, pacman would take the
 # first provider (jack2), which then blocks the listed one; when they must go one at a time, the
 # ones that provide something go first, together. The AUR's after them, one at a time.
-if ! paru -Syu --needed "${wanted[@]}"; then
-    note "Not everything installed; trying the missing packages again"
+built=$(mktemp)
+if ! paru -Syu --needed --noconfirm --skipreview "${wanted[@]}"; then
+    # Ctrl+C while sudo runs pacman reaches only pacman (sudo gives it a terminal of its own),
+    # and paru exits as on any failure: Ctrl+C or n here stops; no answer in 30 s goes on
+    note "Not everything installed."
+    answer=
+    read -r -t 30 -p "Try the missing packages again and go on? [Y/n] " answer </dev/tty || echo
+    [[ ${answer:-y} =~ ^[yY] ]] || stopped
+    note "Trying the missing packages again"
     repo=() providers=() aur=() failed=()
     for pkg in "${wanted[@]}"; do
         pacman -Q "$pkg" &>/dev/null && continue
@@ -484,12 +510,22 @@ if ! paru -Syu --needed "${wanted[@]}"; then
         done
     fi
     for pkg in "${aur[@]}"; do
-        paru -S --needed --noconfirm "$pkg" || failed+=("$pkg")
+        paru -S --needed --noconfirm --skipreview "$pkg" || failed+=("$pkg")
     done
     if ((${#failed[@]})); then
         note "Not installed: ${failed[*]}. Try them later with paru -S."
     fi
 fi
+# The build files of what paru built just now: its clones touched since the step began
+clones=${XDG_CACHE_HOME:-$HOME/.cache}/paru/clone
+for dir in "$clones"/*/; do
+    [[ $dir -nt $built || $dir.git -nt $built ]] || continue
+    name=$(basename "$dir")
+    mkdir -p "$pkgbuilds/$name"
+    (cd "$dir" && git ls-files -z | xargs -0r cp --parents -t "$pkgbuilds/$name") || true
+done
+rm -f "$built"
+[[ -d $pkgbuilds ]] && echo "The AUR packages' build files: $pkgbuilds"
 # Without a needed package the rest would set up what isn't there (a login screen's theme with
 # no login screen): stop here, whatever kept it from installing
 missing=()
