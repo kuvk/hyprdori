@@ -80,7 +80,9 @@ FloatingWindow {
 
     visible: shown
     title: "Settings"
-    color: Theme.panelBg
+    // the background is the one Rectangle below, as in every shell window: painted here too, the
+    // two layers would make the window more opaque than Shell opacity says
+    color: "transparent"
     // 20 more for the pages' inset (see `page`)
     implicitWidth: Math.round(780 * Theme.textScale) + 20
     // one height for every page, enough for Displays without scrolling, but never taller than

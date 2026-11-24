@@ -214,7 +214,9 @@ FloatingWindow {
 
     visible: shown
     title: "Keybindings"
-    color: Theme.panelBg
+    // the background is the one Rectangle below, as in every shell window: painted here too, the
+    // two layers would make the window more opaque than Shell opacity says
+    color: "transparent"
     implicitWidth: Math.round(900 * Theme.textScale)
     implicitHeight: Math.round(640 * Theme.textScale)
     // can grow, not shrink below the default size
