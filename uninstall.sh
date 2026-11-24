@@ -14,6 +14,13 @@
 # -h, --help: the comment above, then nothing else runs
 case ${1:-} in -h | --help) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; exit 0 ;; esac
 set -uo pipefail
+# Ctrl+C stops it here. paru and pacman catch it and exit with an error, which bash would
+# otherwise take for a failed step and go on to the next one
+stopped() {
+    printf '\n\e[33m%s\e[0m\n' "Stopped (Ctrl+C): the steps after this one didn't run. Running uninstall.sh again goes on with what is left."
+    exit 130
+}
+trap stopped INT
 
 main() {
     # Through a pipe (curl ... | bash): the clone's own copy runs, with the terminal for questions

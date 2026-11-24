@@ -23,6 +23,13 @@
 #                          hardware found, the packages not installed yet, the files in the way of
 #                          the links, the services and what the boot step would find. No password.
 set -euo pipefail
+# Ctrl+C stops it here. paru and pacman catch it and exit with an error, which bash would
+# otherwise take for a failed step and go on to the next one
+stopped() {
+    printf '\n\e[33m%s\e[0m\n' "Stopped (Ctrl+C): the steps after this one didn't run. Running install.sh again goes on from where it stopped."
+    exit 130
+}
+trap stopped INT
 dry=false
 [[ ${1:-} == --dry-run ]] && dry=true
 

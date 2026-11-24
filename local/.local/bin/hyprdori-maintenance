@@ -7,6 +7,13 @@
 # Leaves alone what is rebuilt anyway at a cost: browser and shader caches (games stutter while
 # shaders rebuild), Spotify's cache, Python versions in ~/.pyenv.
 set -uo pipefail
+# Ctrl+C stops it here. paru and pacman catch it and exit with an error, which bash would
+# otherwise take for a failed step and go on to the next one
+stopped() {
+    printf '\n\e[33m%s\e[0m\n' "Stopped (Ctrl+C): the steps after this one didn't run."
+    exit 130
+}
+trap stopped INT
 
 PACCACHE_KEEP=2         # package versions kept in pacman's cache
 JOURNAL_KEEP="2weeks"   # journald: time (2weeks) or size (500M)
@@ -16,7 +23,7 @@ AUR_KEEP=(davinci-resolve)  # AUR folders never cleaned: hand-downloaded sources
 log_dir="$HOME/.local/var/log"
 mkdir -p "$log_dir"
 log_file="$log_dir/sysmaintenance-$(date +%F_%H-%M-%S).log"
-exec > >(tee -a "$log_file") 2>&1
+exec > >(tee -ia "$log_file") 2>&1
 
 case ${1:-} in
     -u | --upgrade) upgrade=true ;;

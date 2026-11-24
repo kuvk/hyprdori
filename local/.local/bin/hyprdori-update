@@ -21,6 +21,13 @@
 # -h, --help: the comment above, then nothing else runs
 case ${1:-} in -h | --help) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; exit 0 ;; esac
 set -uo pipefail
+# Ctrl+C stops it here. paru and pacman catch it and exit with an error, which bash would
+# otherwise take for a failed step and go on to the next one
+stopped() {
+    printf '\n\e[33m%s\e[0m\n' "Stopped (Ctrl+C): the steps after this one didn't run."
+    exit 130
+}
+trap stopped INT
 
 hyprdori=$(cd "$(dirname "$(readlink -f "$0")")/../../.." && pwd)
 yes=false
@@ -68,6 +75,8 @@ fi
 
 # --- In a window: what can be updated, the choice, then its output ---------------------------
 if [[ ${1:-} == --window ]]; then
+    # Ctrl+C ends the step running, not the window: its output and status stay to read
+    trap : INT
     exec "$bin/hyprdori-present" window hyprdori-window "Update" "$(readlink -f "$0")" --in-window
 fi
 if [[ ${1:-} == --in-window ]]; then
@@ -133,6 +142,16 @@ fi
 
 step() { "$bin/hyprdori-present" step "$1"; }
 note() { printf '\e[33m%s\e[0m\n' "$1"; }
+# After a step that didn't finish. Ctrl+C while sudo runs pacman never reaches this script (sudo
+# gives pacman a terminal of its own) and paru then exits as on any failure, so it asks: Ctrl+C
+# or n here stops; no answer in 30 s, or --yes, goes on
+go_on() {
+    note "$1"
+    $yes && return 0
+    local answer
+    read -r -t 30 -p "Go on with the next steps? [Y/n] " answer </dev/tty || echo
+    [[ ${answer:-y} =~ ^[yY] ]] || stopped
+}
 
 # Awake while it runs (on battery it asks first), then the password once: sudo keeps it until the
 # update ends, however long the downloads and builds take
@@ -151,7 +170,7 @@ if command -v snapper >/dev/null && sudo snapper list-configs 2>/dev/null | grep
         "$bin/hyprdori-present" spin "Removing the oldest beyond 5" sudo -n snapper -c root cleanup number
         echo "Taken; the boot menu's Snapshots has it."
     else
-        note "No snapshot taken; the update goes on."
+        go_on "No snapshot taken."
     fi
 fi
 
@@ -161,7 +180,7 @@ if $yes; then
     paru -Syu --noconfirm
 else
     paru -Syu
-fi && rm -f "$waiting" || note "The package upgrade didn't finish; the steps below still run."
+fi && rm -f "$waiting" || go_on "The package upgrade didn't finish."
 
 # --- Flatpak --------------------------------------------------------------------------------
 if command -v flatpak >/dev/null; then
