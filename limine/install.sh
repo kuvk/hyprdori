@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Installs Limine on the ESP and writes its menu: one entry per kernel in /efi/arch
-# (mkinitcpio's presets put kernels and images there), styled like the boot splash:
+# Installs Limine on the ESP and writes its menu: one entry per kernel on the ESP (in /boot when
+# the ESP is there, else in ESP/arch, where install.sh's presets put kernels and images: Limine
+# reads only FAT; hyprdori-installed --esp, --kernels), styled like the boot splash:
 # the logo in magenta above an "Arch Linux" tree of kernels in accent, the text logo below.
 # Run it again after a Limine update, a new kernel, or to change colors.
 #
@@ -21,8 +22,10 @@
 # Kernel options come from /etc/kernel/cmdline (made from the running system's on first run).
 # At boot, E on an entry edits its options for that boot only.
 #
-# The menu is /efi/limine.conf (Limine's last place to look, so nothing may sit in EFI/limine or
-# EFI/BOOT, where Limine's fallback copy is: the one firmware starts without boot entries).
+# The menu is limine.conf at the top of the ESP (Limine's last place to look, so nothing may sit
+# in EFI/limine or EFI/BOOT, where Limine's fallback copy is: the one firmware starts without
+# boot entries). /etc/hyprdori/menu says it's there, for whoever can't read an ESP mounted for
+# root only (hyprdori-installed); --plain removes it.
 # It's written whole, so entries added there are lost: other systems' entries (Windows, another
 # distro, the UEFI shell) go in /etc/hyprdori/limine-entries.conf, added as written below the
 # Arch Linux ones. Above its first entry the same file may set four menu options, in place of
@@ -36,8 +39,11 @@
 set -euo pipefail
 
 here=$(dirname "$(readlink -f "$0")")
-esp=/efi
-kernels=/efi/arch
+esp=$("$here/../local/.local/bin/hyprdori-installed" --esp) ||
+    { echo "No EFI system partition mounted at /efi, /boot or /boot/efi" >&2; exit 1; }
+kernels=$("$here/../local/.local/bin/hyprdori-installed" --kernels)
+# the kernels' folder as Limine names it, from the top of the ESP: "" or /arch
+on_esp=${kernels#"$esp"}
 mode=install
 use_theme=false
 plain=false
@@ -318,8 +324,8 @@ EOF
         cat <<EOF
 //$k
     protocol: linux
-    kernel_path: boot():/${kernels#"$esp"/}/vmlinuz-$k
-    module_path: boot():/${kernels#"$esp"/}/initramfs-$k.img
+    kernel_path: boot():$on_esp/vmlinuz-$k
+    module_path: boot():$on_esp/initramfs-$k.img
     kernel_cmdline: $cmdline
 EOF
     done
@@ -361,8 +367,14 @@ else
     install -m 0644 "$build/wallpaper.png" "$esp/EFI/limine/"
 fi
 printf '%s\n' "$conf" >"$esp/limine.conf"
-# Limine reads the one next to its EFI file first: none there, so it reads /efi/limine.conf
+# Limine reads the one next to its EFI file first: none there, so it reads the one at the top
 rm -f "$esp/EFI/limine/limine.conf"
+if $plain; then
+    rm -f /etc/hyprdori/menu
+else
+    install -D -m 0644 /dev/null /etc/hyprdori/menu
+    echo "# Hyprdori's boot menu is $esp/limine.conf (limine/install.sh)" >/etc/hyprdori/menu
+fi
 if $snapshots; then
     limine-snapper-sync >/dev/null 2>&1 && echo "Snapshot entries added (limine-snapper-sync)" ||
         echo "limine-snapper-sync couldn't add the snapshot entries; they come with the next snapshot" >&2

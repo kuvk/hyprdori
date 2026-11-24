@@ -2,12 +2,13 @@
 # Moves a kernel installed later onto the boot menu. A kernel package's install writes the stock
 # mkinitcpio preset, which puts the kernel and its image in /boot, where Limine can't read them
 # (it reads only the ESP). This writes the preset install.sh writes (kernel and image in
-# /efi/arch), copies the kernel there, builds the image, removes the copies in /boot, and writes
+# ESP/arch), copies the kernel there, builds the image, removes the copies in /boot, and writes
 # the boot menu again (limine/install.sh, with the options it was installed with). Install the
-# kernel's -headers package first where DKMS modules (NVIDIA's) must be built for it.
+# kernel's -headers package first where DKMS modules (NVIDIA's) must be built for it. With the
+# ESP at /boot, the stock preset puts them on it already: only the menu is written again.
 #
 #   hyprdori-kernel-preset            every installed kernel whose preset isn't Hyprdori's yet,
-#                                     and the menu written again if a kernel in /efi/arch is
+#                                     and the menu written again if a kernel on the ESP is
 #                                     missing from it (a kernel reinstalled gets its old preset
 #                                     back from pacman's .pacsave, so it's already there)
 #   hyprdori-kernel-preset KERNEL...  these (package names: linux-zen, linux-g14, ...), again too
@@ -21,13 +22,13 @@ case ${1:-} in -h | --help) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next }
 set -euo pipefail
 
 hyprdori=$(cd "$(dirname "$(readlink -f "$0")")/../../.." && pwd)
-esp=/efi
-kernels=$esp/arch
+installed=$hyprdori/local/.local/bin/hyprdori-installed
+esp=$("$installed" --esp) || { echo "No EFI system partition mounted at /efi, /boot or /boot/efi" >&2; exit 1; }
+kernels=$("$installed" --kernels)
 conf=$esp/limine.conf
 
-"$hyprdori/local/.local/bin/hyprdori-installed" menu ||
+"$installed" menu ||
     { echo "No boot menu of Hyprdori's (Limine) here: kernels stay where the boot loader reads them." >&2; exit 1; }
-mountpoint -q "$esp" || { echo "The ESP isn't mounted at $esp" >&2; exit 1; }
 
 # The kernel file of an installed kernel package, from its module folder's pkgbase
 kernel_file() {
@@ -44,13 +45,18 @@ else
     wanted=()
     for base in /usr/lib/modules/*/pkgbase; do
         name=$(<"$base")
+        [[ $kernels == /boot ]] && continue  # the stock preset's place, on the ESP already
         grep -qs "^ALL_kver=\"$kernels/" "/etc/mkinitcpio.d/$name.preset" || wanted+=("$name")
     done
 fi
-# The kernels in /efi/arch with an image, and the menu's kernel entries (//name, not the
-# Snapshots folder): hyprdori-update compares the same
-on_esp=$(for k in "$kernels"/vmlinuz-*; do [[ -e $kernels/initramfs-${k#*/vmlinuz-}.img ]] && echo "${k#*/vmlinuz-}"; done | sort | tr '\n' ' ')
-in_menu=$(sed -n 's|^//\([^/]\)|\1|p' "$conf" 2>/dev/null | grep -vx Snapshots | sort | tr '\n' ' ')
+# The kernels on the ESP with an image, and the menu's kernel entries (//name, not the
+# Snapshots folder): hyprdori-update compares the same. Through sudo when the ESP is mounted
+# for root only (archinstall's)
+read_as=()
+[[ -r $esp && -x $esp ]] || { sudo -v; read_as=(sudo); }
+on_esp=$("${read_as[@]}" find "$kernels" -maxdepth 1 -name 'vmlinuz-*' -printf '%f\n' | sed 's/^vmlinuz-//' |
+    while read -r k; do "${read_as[@]}" test -e "$kernels/initramfs-$k.img" && echo "$k"; done | sort | tr '\n' ' ')
+in_menu=$("${read_as[@]}" sed -n 's|^//\([^/]\)|\1|p' "$conf" 2>/dev/null | grep -vx Snapshots | sort | tr '\n' ' ')
 if ((${#wanted[@]} == 0)) && [[ $on_esp == "$in_menu" ]]; then
     echo "Every installed kernel is on the boot menu already."
     exit 0
@@ -84,8 +90,8 @@ EOF
 done
 
 # The menu again, so it lists them
-if grep -qs 'Written by limine/install.sh' "$conf"; then
-    read -ra options <<<"$(sed -n 's/^# Options: //p' "$conf")"
+if sudo grep -qs 'Written by limine/install.sh' "$conf"; then
+    read -ra options <<<"$(sudo sed -n 's/^# Options: //p' "$conf")"
     sudo "$hyprdori/limine/install.sh" "${options[@]}"
 else
     echo "No boot menu written by limine/install.sh; add the kernels to it yourself." >&2

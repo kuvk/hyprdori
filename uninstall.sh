@@ -74,6 +74,15 @@ uninstall() {
 
     # --- What's here ----------------------------------------------------------------------------
     local menu=false splash=false login=false others=()
+    # the ESP and the menu's kernels (/boot when the ESP is there: never removed, else ESP/arch)
+    local esp kernels
+    esp=$("$bin/hyprdori-installed" --esp) || esp=
+    kernels=$("$bin/hyprdori-installed" --kernels) || kernels=
+    # Limine's own menu, set aside when Hyprdori's took its place (install.sh): the files, and
+    # the menu tools removed then
+    local -a set_aside=() tools=()
+    mapfile -t set_aside < <(logged backup | awk '$2 ~ /\.hyprdori-bak$/')
+    mapfile -t tools < <(logged removed | sort -u)
     installed menu && menu=true
     installed splash && splash=true
     installed login && login=true
@@ -108,10 +117,14 @@ MSG
     local -a removed_options=()
 
     # --- Boot menu ------------------------------------------------------------------------------
-    local remove_limine=false
+    local remove_limine=false own_menu=false
     if $menu; then
         step "Boot menu"
-        if ((${#others[@]})); then
+        if ((${#set_aside[@]})); then
+            ask "Put back the boot menu Limine had before Hyprdori ($(printf '%s ' "${set_aside[@]%% *}")$( ((${#tools[@]})) && echo "and ${tools[*]}"))? (No: a plain menu of Hyprdori's entries)" y &&
+                own_menu=true
+        fi
+        if ! $own_menu && ((${#others[@]})); then
             ask "Remove Limine too? ${others[*]} then boots this machine (its own menu must list the kernels, which go back to /boot)" n &&
                 remove_limine=true
         fi
@@ -204,18 +217,45 @@ MSG
         local entry
         entry=$(efibootmgr 2>/dev/null | sed -n -E 's/^Boot([0-9A-Fa-f]{4})\*? .*\\EFI\\limine\\BOOTX64\.EFI.*/\1/Ip' | head -1)
         [[ -n $entry ]] && run sudo efibootmgr -q -b "$entry" -B
-        run sudo rm -rf /efi/EFI/limine /efi/limine.conf
-        sudo -n grep -qsa Limine /efi/EFI/BOOT/BOOTX64.EFI && run sudo rm -f /efi/EFI/BOOT/BOOTX64.EFI
+        run sudo rm -rf "$esp/EFI/limine" "$esp/limine.conf"
+        sudo -n grep -qsa Limine "$esp/EFI/BOOT/BOOTX64.EFI" && run sudo rm -f "$esp/EFI/BOOT/BOOTX64.EFI"
         run sudo rm -f /etc/default/limine /etc/mkinitcpio.conf.d/snapshots.conf
         systemctl is-enabled -q limine-snapper-sync.service 2>/dev/null && run sudo systemctl disable limine-snapper-sync.service
+        rebuild=true
+    fi
+    # Limine's own menu back: its presets (each kernel where the preset reads it), its menu
+    # files over Hyprdori's, its settings, and the tools that write it
+    if $menu && $own_menu; then
+        local preset kver modules line orig back
+        for preset in /etc/mkinitcpio.d/*.preset.bak; do
+            [[ -e $preset ]] || continue
+            run sudo mv "$preset" "${preset%.bak}"
+            kver=$(sed -n -E 's/^ALL_kver="?([^"]*)"?$/\1/p' "${preset%.bak}" 2>/dev/null)
+            for modules in /usr/lib/modules/*/pkgbase; do
+                [[ -n $kver && $(<"$modules") == "$(basename "$preset" .preset.bak)" ]] &&
+                    run sudo install -D -m 0644 "${modules%/pkgbase}/vmlinuz" "$kver"
+            done
+        done
+        run sudo rm -f "$esp/limine.conf" "$esp/EFI/limine/wallpaper.png" /etc/default/limine
+        for line in "${set_aside[@]}"; do
+            read -r orig back <<<"$line"
+            { $dry || sudo -n test -e "$back"; } && run sudo mv "$back" "$orig"
+        done
+        if ((${#tools[@]})); then
+            run paru -S --needed --noconfirm --skipreview "${tools[@]}" || note "Not installed again: ${tools[*]} (paru -S)"
+        fi
         rebuild=true
     fi
     if $rebuild; then
         echo "Building the initramfs again"
         run sudo mkinitcpio -P
     fi
-    if $menu && $remove_limine; then
-        run sudo rm -rf /efi/arch
+    if $menu && { $remove_limine || $own_menu; } && [[ -n $kernels && $kernels != /boot ]]; then
+        run sudo rm -rf "$kernels"
+    fi
+    if $menu && $own_menu; then
+        note "Limine's own menu is back: check it lists the kernels before rebooting."
+    elif $menu && $remove_limine; then
         note "Limine is gone: check that ${others[*]}'s menu lists the kernels in /boot before rebooting."
     elif $menu; then
         run sudo "$hyprdori/limine/install.sh" --plain

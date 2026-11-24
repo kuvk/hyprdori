@@ -7,19 +7,56 @@
 #   hyprdori-installed           each part, a line each: yes or no
 #   hyprdori-installed PART...   exit 0 when every PART is set up:
 #                                  menu    the boot menu: Limine, its menu written by
-#                                          limine/install.sh (/efi/limine.conf)
+#                                          limine/install.sh (ESP/limine.conf; on an ESP only
+#                                          root reads, the stamp it leaves: /etc/hyprdori/menu)
 #                                  splash  the boot splash: Plymouth with Hyprdori's theme and
 #                                          its hook in the initramfs
 #                                  login   the login screen: SDDM with Hyprdori's settings
+#   hyprdori-installed --esp     where the ESP is mounted: the first of /efi, /boot and
+#                                /boot/efi whose partition is an EFI system partition (a FAT
+#                                /boot of the XBOOTLDR type isn't); exit 1 with none
+#   hyprdori-installed --kernels where the boot menu's kernels and images are: /boot when the
+#                                ESP is there (the presets' own place, on the ESP already), else
+#                                ESP/arch (the presets install.sh writes)
 
 # -h, --help: the comment above, then nothing else runs
 case ${1:-} in -h | --help) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; exit 0 ;; esac
 set -uo pipefail
 
 parts=(menu splash login)
+# The ESP by its partition type (GPT's, or MBR's 0xef); a FAT file system whose type isn't known
+# (a loop device) counts too
+esp() {
+    local dir type
+    for dir in /efi /boot /boot/efi; do
+        [[ $(findmnt -no FSTYPE --mountpoint "$dir" 2>/dev/null) == vfat ]] || continue
+        type=$(lsblk -dno PARTTYPE "$(findmnt -no SOURCE --mountpoint "$dir")" 2>/dev/null)
+        case ${type,,} in
+            c12a7328-f81f-11d2-ba4b-00a0c93ec93b | 0xef | "") echo "$dir"; return 0 ;;
+        esac
+    done
+    return 1
+}
+kernels() {
+    local at
+    at=$(esp) || return 1
+    if [[ $at == /boot ]]; then echo /boot; else echo "$at/arch"; fi
+}
 has() {
     case $1 in
-        menu) grep -qs '^# Written by limine/install.sh' /efi/limine.conf /efi/EFI/limine/limine.conf ;;
+        menu)
+            local at conf
+            at=$(esp) || return 1
+            for conf in "$at/limine.conf" "$at/EFI/limine/limine.conf"; do
+                if [[ -r $conf ]]; then
+                    grep -qs '^# Written by limine/install.sh' "$conf" && return 0
+                elif [[ ! -r $at || ! -x $at ]]; then
+                    # mounted for root only (archinstall's umask): what limine/install.sh left
+                    [[ -f /etc/hyprdori/menu ]] && return 0
+                fi
+            done
+            return 1
+            ;;
         splash)
             [[ -f /usr/share/plymouth/themes/hyprdori/hyprdori.plymouth ]] &&
                 grep -qE '^HOOKS=.*\bplymouth\b' /etc/mkinitcpio.conf
@@ -29,6 +66,10 @@ has() {
     esac
 }
 
+case ${1:-} in
+    --esp) esp; exit ;;
+    --kernels) kernels; exit ;;
+esac
 if (($# == 0)); then
     for part in "${parts[@]}"; do
         if has "$part"; then echo "$part: yes"; else echo "$part: no"; fi

@@ -54,7 +54,8 @@ if [[ ${1:-} == --as-root ]]; then
     # Limine with the options it was installed with (hyprdori-update does the same)
     if installed menu; then
         options=()
-        for conf in /efi/limine.conf /efi/EFI/limine/limine.conf; do
+        esp=$("$hyprdori/local/.local/bin/hyprdori-installed" --esp)
+        for conf in "$esp/limine.conf" "$esp/EFI/limine/limine.conf"; do
             if [[ -r $conf ]]; then
                 read -ra options <<<"$(sed -n 's/^# Options: //p' "$conf")"
                 break

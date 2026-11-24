@@ -192,23 +192,26 @@ if command -v flatpak >/dev/null; then
     if $yes; then flatpak update -y; else flatpak update; fi
 fi
 
-# --- Limine: its EFI file and menu entries follow the package and the kernels in /efi/arch ---
+# --- Limine: its EFI file and menu entries follow the package and the kernels on the ESP ------
 # Only Hyprdori's menu (hyprdori-installed): a Limine set up otherwise keeps its own. The menu:
-# /efi/limine.conf, or where it was before snapshots (EFI/limine)
-conf=/efi/limine.conf
-[[ -r $conf ]] || conf=/efi/EFI/limine/limine.conf
-if "$bin/hyprdori-installed" menu && [[ -r $conf ]]; then
+# limine.conf at the top of the ESP, or where it was before snapshots (EFI/limine). Read through
+# sudo (it has the password): an ESP may be mounted for root only
+esp=$("$bin/hyprdori-installed" --esp) && kernels=$("$bin/hyprdori-installed" --kernels)
+conf=$esp/limine.conf
+sudo -n test -r "$conf" || conf=$esp/EFI/limine/limine.conf
+if [[ -n $esp ]] && "$bin/hyprdori-installed" menu && sudo -n test -r "$conf"; then
     step "Limine"
     reasons=()
-    cmp -s /usr/share/limine/BOOTX64.EFI /efi/EFI/limine/BOOTX64.EFI || reasons+=("a new Limine")
+    sudo -n cmp -s /usr/share/limine/BOOTX64.EFI "$esp/EFI/limine/BOOTX64.EFI" || reasons+=("a new Limine")
     # the kernel entries (//name), not the Snapshots folder or the snapshots in it (///...)
-    in_menu=$(sed -n 's|^//\([^/]\)|\1|p' "$conf" | grep -vx Snapshots | sort | tr '\n' ' ')
-    on_esp=$(for k in /efi/arch/vmlinuz-*; do [[ -e /efi/arch/initramfs-${k#*/vmlinuz-}.img ]] && echo "${k#*/vmlinuz-}"; done | sort | tr '\n' ' ')
+    in_menu=$(sudo -n sed -n 's|^//\([^/]\)|\1|p' "$conf" | grep -vx Snapshots | sort | tr '\n' ' ')
+    on_esp=$(sudo -n find "$kernels" -maxdepth 1 -name 'vmlinuz-*' -printf '%f\n' | sed 's/^vmlinuz-//' |
+        while read -r k; do sudo -n test -e "$kernels/initramfs-$k.img" && echo "$k"; done | sort | tr '\n' ' ')
     [[ $in_menu == "$on_esp" ]] || reasons+=("kernels changed: ${on_esp:-none}")
     if ((${#reasons[@]})); then
         echo "Rewriting the menu (${reasons[*]})"
-        read -ra options <<<"$(sed -n 's/^# Options: //p' "$conf")"
-        sudo "$hyprdori/limine/install.sh" "${options[@]}"
+        read -ra options <<<"$(sudo -n sed -n 's/^# Options: //p' "$conf")"
+        sudo "$hyprdori/limine/install.sh" "${options[@]}" || go_on "The boot menu wasn't written."
     else
         echo "Up to date."
     fi

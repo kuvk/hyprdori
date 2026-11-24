@@ -203,7 +203,8 @@ dry_report() {
     echo "Login screen: $(case $login in sddm) echo "Hyprdori's (SDDM)" ;; kept) echo "$dm, as it is" ;; *) echo "none (Hyprland started from the console)" ;; esac)"
     echo "Boot splash: $($splash && echo "Plymouth, its hook in the initramfs" || echo none)"
     if $menu; then
-        echo "Boot menu: Limine, kernels and images moved to /efi/arch, the kernel options in /etc/kernel/cmdline"
+        echo "Boot menu: Limine on the ESP at $esp_at, $([[ $kernels == /boot ]] && echo "the kernels where they are (/boot)" || echo "kernels and images moved to $kernels"), the kernel options in /etc/kernel/cmdline"
+        ((${#own_confs[@]})) && echo "Limine's own menu set aside for uninstall.sh: ${own_confs[*]}${hooks:+; removed: ${hooks[*]}}"
         [[ -e /etc/hyprdori/limine-entries.conf ]] ||
             echo "Would make /etc/hyprdori/limine-entries.conf (other systems' boot entries; only comments)"
     else
@@ -303,15 +304,15 @@ browser_font=false
 # The boot menu, splash and login screen (packages/boot.txt): each only when chosen, and kept
 # once set up (uninstall.sh removes them). What's there already picks the defaults
 installed() { "$hyprdori/local/.local/bin/hyprdori-installed" "$1"; }
-# the ESP (Hyprdori's menu and its kernels go on the one at /efi)
-esp_at=
-for dir in /efi /boot /boot/efi; do
-    [[ $(findmnt -no FSTYPE "$dir" 2>/dev/null) == vfat ]] && { esp_at=$dir; break; }
-done
-# other boot loaders, by what they leave on the ESP or in /boot; a Limine set up otherwise keeps
-# its own menu. Two Limine menus are Hyprdori's to replace: the first-boot one from the install
-# guide (docs/arch-install.md) and uninstall.sh's plain one, each saying so in its first lines
-other_loaders=() own_limine=false
+# The ESP, by its partition type, at /efi, /boot or /boot/efi, and where the menu's kernels go:
+# /boot when the ESP is there, else ESP/arch (Limine reads only FAT)
+esp_at=$(installed --esp) || esp_at=
+kernels=$(installed --kernels) || kernels=
+# other boot loaders, by what they leave on the ESP or in /boot. Two Limine menus are Hyprdori's
+# to replace: the first-boot one from the install guide (docs/arch-install.md) and uninstall.sh's
+# plain one, each saying so in its first lines; any other is Limine's own (own_confs, on this
+# ESP: Hyprdori's menu may take its place)
+other_loaders=() own_limine=false own_confs=()
 replaceable='install.sh replaces this menu|limine/install.sh --plain'
 for dir in /efi /boot /boot/efi; do
     mountpoint -q "$dir" || continue
@@ -320,11 +321,28 @@ for dir in /efi /boot /boot/efi; do
     if ! installed menu; then
         for file in limine.conf limine/limine.conf EFI/limine/limine.conf EFI/BOOT/limine.conf; do
             on_esp "$dir/$file" || continue
-            { grep -qsE "$replaceable" "$dir/$file" || { ! $dry && sudo grep -qsE "$replaceable" "$dir/$file"; }; } ||
-                own_limine=true
+            { grep -qsE "$replaceable" "$dir/$file" || { ! $dry && sudo grep -qsE "$replaceable" "$dir/$file"; }; } &&
+                continue
+            own_limine=true
+            [[ $dir == "$esp_at" ]] && own_confs+=("$dir/$file")
         done
     fi
 done
+# Tools that write Limine's menu at every kernel update, over Hyprdori's: removed when its menu
+# takes the place of theirs (uninstall.sh offers them back)
+mapfile -t hooks < <(pacman -Qq 2>/dev/null | grep -xE 'limine-(mkinitcpio-hook|entry-tool|dracut-support)(-git)?')
+# Room for the kernels on the ESP: about 200 MB each (the kernel, an image with NVIDIA's
+# modules), less what's there already; none needed when they're in /boot on it
+esp_room=true
+if [[ -n $kernels && $kernels != /boot ]]; then
+    need_mb=0
+    for preset in /etc/mkinitcpio.d/*.preset; do
+        [[ -e $preset ]] || continue
+        grep -q "^ALL_kver=\"$kernels/" "$preset" || need_mb=$((need_mb + 200))
+    done
+    free_mb=$(($(df --output=avail -k "$esp_at" | tail -1) / 1024))
+    ((free_mb >= need_mb)) || esp_room=false
+fi
 [[ -e /boot/grub/grub.cfg ]] && other_loaders+=(GRUB)
 $own_limine && other_loaders+=(Limine)
 mapfile -t other_loaders < <(printf '%s\n' "${other_loaders[@]}" | sed '/^$/d' | sort -u)
@@ -359,10 +377,15 @@ $splash && parts+=(splash)
 menu=false
 if installed menu; then
     menu=true
+elif [[ -z $esp_at ]]; then
+    note "Boot menu: no EFI system partition mounted at /efi, /boot or /boot/efi; the boot loader stays as it is."
+elif ! $esp_room; then
+    note "Boot menu: the ESP at $esp_at has ${free_mb} MB free, ${need_mb} MB needed for the kernels; the boot loader stays as it is."
+elif $own_limine && ((${#own_confs[@]} == 0)); then
+    note "Boot menu: Limine is set up here with its own menu, on another ESP; it's left as it is."
 elif $own_limine; then
-    note "Boot menu: Limine is set up here with its own menu; it's left as it is."
-elif [[ $esp_at != /efi ]]; then
-    note "Boot menu: Limine needs the ESP at /efi (${esp_at:-none found}); the boot loader stays as it is."
+    ask "Boot menu: Limine has its own menu here (${own_confs[*]}). Hyprdori's in its place, in the theme's colors?$( ((${#hooks[@]})) && echo " ${hooks[*]} would be removed: it writes the menu at every kernel update.") (No: it stays as it is. Yes: its menu is kept, and uninstall.sh offers to put it back)" n &&
+        menu=true
 elif ((${#other_loaders[@]})); then
     ask "Boot menu: Limine in the theme's colors, first in the boot order? (No: ${other_loaders[*]} stays the boot menu; it stays installed either way)" n && menu=true
 else
@@ -640,6 +663,28 @@ wall=$(jq -r '.background // empty' "$HOME/.config/theme/current/quickshell.json
 
 # The initramfs is built again at the end when a step below changes what goes into it
 rebuild=false
+# --- Limine's own menu, set aside for Hyprdori's (when chosen) -------------------------------------
+# Moved, not copied: Limine would read some of them before the one Hyprdori's goes in. Its
+# settings for limine-snapper-sync and the menu tools (/etc/default/limine) are kept too, and
+# the tools that write the menu at every kernel update go. uninstall.sh puts it all back
+if $menu && ((${#own_confs[@]})); then
+    step "Limine's own menu"
+    for file in "${own_confs[@]}"; do
+        sudo mv "$file" "$file.hyprdori-bak"
+        record backup "$file" "$file.hyprdori-bak"
+        echo "$file: kept as $file.hyprdori-bak"
+    done
+    if [[ -e /etc/default/limine && ! -e /etc/default/limine.hyprdori-bak ]]; then
+        sudo cp -a /etc/default/limine /etc/default/limine.hyprdori-bak
+        record backup /etc/default/limine /etc/default/limine.hyprdori-bak
+    fi
+    if ((${#hooks[@]})); then
+        # their dependencies stay: Limine may be one of them
+        sudo pacman -Rn --noconfirm "${hooks[@]}"
+        for pkg in "${hooks[@]}"; do record removed "$pkg"; done
+        echo "Removed: ${hooks[*]}"
+    fi
+fi
 # --- Snapshots: snapper on @snapshots, limine-snapper-sync, read-only snapshots with an overlay -------------
 if $snapshots && command -v snapper >/dev/null; then
     step "Snapshots"
@@ -665,7 +710,7 @@ if $snapshots && command -v snapper >/dev/null; then
     # /: /home holds the user's work, never rolled back
     sudo snapper -c root set-config TIMELINE_CREATE=no NUMBER_LIMIT=5 NUMBER_LIMIT_IMPORTANT=5 NUMBER_MIN_AGE=0
     sudo systemctl enable --now snapper-cleanup.timer
-    # The boot menu's snapshots: their entries in /efi/limine.conf (limine/install.sh adds the
+    # The boot menu's snapshots: their entries in the ESP's limine.conf (limine/install.sh adds the
     # place), booted read-only with a throwaway layer on top (systemd.volatile=overlay: the
     # initramfs gets systemd's volatile-root service, which the systemd hook leaves out, and the
     # overlay module), restored with limine-snapper-restore
@@ -674,7 +719,7 @@ if $snapshots && command -v snapper >/dev/null; then
         record file /etc/mkinitcpio.conf.d/snapshots.conf
         sudo tee /etc/default/limine >/dev/null <<CONF
 # limine-snapper-sync, written by Hyprdori's install.sh
-ESP_PATH="/efi"
+ESP_PATH="$esp_at"
 TARGET_OS_NAME="Arch Linux"
 SNAPPER_CONFIG_NAME="root"
 LIMIT_USAGE_PERCENT=85
@@ -766,19 +811,27 @@ fi
 has_option() { [[ " $1 " == *" ${2%%=*}="* || " $1 " == *" $2 "* ]]; }
 
 if $menu; then
-    # Kernels and images on the ESP, where Limine can read them (it reads only FAT)
-    sudo install -d /efi/arch
+    # Kernels and images on the ESP, where Limine can read them (it reads only FAT): with the ESP
+    # at /boot they're there already, and the presets stay as they are
+    [[ $kernels == /boot ]] || sudo install -d "$kernels"
     for preset in /etc/mkinitcpio.d/*.preset; do
+        [[ $kernels == /boot || ! -e $preset ]] && break
         kernel=$(basename "$preset" .preset)
-        grep -q '^ALL_kver="/efi/arch/' "$preset" && continue
+        grep -q "^ALL_kver=\"$kernels/" "$preset" && continue
         [[ -e $preset.bak ]] || { sudo cp "$preset" "$preset.bak" && record backup "$preset" "$preset.bak"; }
         sudo tee "$preset" >/dev/null <<EOF
 # mkinitcpio preset for $kernel; the kernel and image go to the ESP (install.sh)
-ALL_kver="/efi/arch/vmlinuz-$kernel"
+ALL_kver="$kernels/vmlinuz-$kernel"
 PRESETS=('default')
-default_image="/efi/arch/initramfs-$kernel.img"
+default_image="$kernels/initramfs-$kernel.img"
 EOF
-        echo "$kernel: kernel and image now go to /efi/arch"
+        # the kernel itself, which mkinitcpio reads its version from (pacman puts it there from
+        # the next update on); the copies in /boot stay for the other boot loader until then
+        for base in /usr/lib/modules/*/pkgbase; do
+            [[ -e $base && $(<"$base") == "$kernel" ]] &&
+                sudo install -m 0644 "${base%/pkgbase}/vmlinuz" "$kernels/vmlinuz-$kernel"
+        done
+        echo "$kernel: kernel and image now go to $kernels"
         rebuild=true
     done
     # Limine's kernel options: the running system's, plus the ones above
@@ -801,8 +854,8 @@ EOF
     fi
 fi
 
-# The splash builds the initramfs (and with the menu, the kernels in /efi/arch); without it,
-# changes above are built here. Limine then finds the kernels in /efi/arch
+# The splash builds the initramfs (and with the menu, the kernels on the ESP); without it,
+# changes above are built here. Limine then finds the kernels there
 if $splash; then
     sudo "$hyprdori/plymouth/install.sh" --theme
 elif $rebuild; then

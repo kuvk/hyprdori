@@ -3,7 +3,7 @@
 # they belong to; a part named with "+" needs all of them chosen. One package per line; "# AUR"
 # marks AUR packages.
 
-[menu]                   # the boot menu: Limine on the ESP at /efi, its UEFI boot entry
+[menu]                   # the boot menu: Limine on the ESP (/efi, /boot or /boot/efi), its UEFI boot entry
 limine
 efibootmgr
 
