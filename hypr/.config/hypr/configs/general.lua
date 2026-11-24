@@ -1,4 +1,5 @@
--- Border colors follow the theme, gaps are Quickshell's Settings (Windows); both written to
+-- Border colors follow the theme, gaps and border width are Quickshell's Settings (Windows,
+-- Style); all written to
 -- generated/theme.lua by ~/.local/bin/hyprdori-theme-set. Missing there: these.
 local ok, theme = pcall(require, "configs.generated.theme")
 if not ok then
@@ -9,7 +10,7 @@ hl.config({
   general = {
     gaps_in = theme.gaps_in or 5,
     gaps_out = theme.gaps_out or 10,
-    border_size = 2,
+    border_size = theme.border_size or 2,
     col = {
       active_border = theme.active_border,
       inactive_border = theme.inactive_border,

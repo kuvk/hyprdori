@@ -28,10 +28,12 @@ KB_OPTIONS=$(sed -n 's/^ *kb_options = "\([^"]*\)".*/\1/p' "$INPUT" | head -n1)
 GAME_KB_LAYOUT="us"
 GAME_KB_OPTIONS="ctrl:nocaps"
 
-# Border colors follow the current theme (its generated theme.lua, as general.lua reads it)
+# Border colors follow the current theme, and their width Settings (its generated theme.lua,
+# as general.lua reads it)
 borders="package.loaded['configs.generated.theme'] = nil
 local ok, theme = pcall(require, 'configs.generated.theme')
-local borders = ok and { active_border = theme.active_border, inactive_border = theme.inactive_border } or nil"
+local borders = ok and { active_border = theme.active_border, inactive_border = theme.inactive_border } or nil
+local border_size = ok and theme.border_size or 2"
 
 # The mode on the on-screen display, for a moment
 osd() { "$HOME/.local/bin/hyprdori-osd" "$@"; }
@@ -58,7 +60,7 @@ hl.config({
         rounding = 0,
     },
     general = {
-        border_size = 2,
+        border_size = border_size,
         col = borders,
     },
 })
@@ -67,15 +69,17 @@ hl.config({
 }
 
 style_off() {
-    # decoration.lua again (opacity, blur), so its values live in one place; the
-    # shell then sets the corners and blur from Settings (services/Hypr.qml)
+    # decoration.lua and animations.lua again (opacity, blur, animations), so their values
+    # live in one place; the shell then sets the corners, blur and animations from Settings
+    # (services/Hypr.qml)
     hyprctl eval "$borders
 package.loaded['configs.decoration'] = nil
 require('configs.decoration')
+package.loaded['configs.animations'] = nil
+require('configs.animations')
 hl.config({
-    animations = { enabled = true },
     general = {
-        border_size = 2,
+        border_size = border_size,
         col = borders,
     },
 })

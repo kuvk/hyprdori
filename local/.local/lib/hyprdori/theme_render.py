@@ -305,8 +305,8 @@ def generate(name: str) -> dict:
 
 
 def write_hypr_look() -> None:
-    """Only Hyprland's generated theme.lua again, with the gaps, corners, opacity and blur
-    from Settings, so Hyprland starts with them (the shell applies them live)."""
+    """Only Hyprland's generated theme.lua again, with the gaps, border width, corners,
+    opacity, blur and animations from Settings, so Hyprland starts with them (the shell applies them live)."""
     theme = load_theme(current_theme())
     content = render(
         (TEMPLATES_DIR / "hyprland.lua.tpl").read_text(), theme, "hyprland.lua.tpl"

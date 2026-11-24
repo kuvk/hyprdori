@@ -22,23 +22,24 @@ Singleton {
         dispatch(Hyprland.usingLua ? `hl.dsp.focus({ workspace = ${id} })` : `workspace ${id}`);
     }
 
-    // Window gaps, corners, opacity and blur from Settings, at once; hyprdori-theme-set --hypr
-    // writes them to Hyprland's generated theme.lua as well, so it starts with them.
-    // Work and Game have their own gaps; their square corners, opaque windows and no blur come from
-    // hyprdori-mode, which a config reload undoes, so it runs again then (restyle).
+    // Window gaps, border width, corners, opacity, blur and animations from Settings, at once;
+    // hyprdori-theme-set --hypr writes them to Hyprland's generated theme.lua as well, so it
+    // starts with them. Work and Game have their own gaps; their square corners, opaque windows,
+    // no blur and no animations come from hyprdori-mode, which a config reload undoes, so it runs
+    // again then (restyle).
     function applyLook(): void {
         const inner = Theme.gamemode ? Config.gameGapsIn : Config.gapsIn;
         const outer = Theme.gamemode ? Config.gameGapsOut : Config.gapsOut;
-        const look = Theme.gamemode ? "" : `, decoration = { rounding = ${Config.radius}, active_opacity = ${Config.activeOpacity}, inactive_opacity = ${Config.inactiveOpacity}, blur = { enabled = ${Config.blur} } }`;
-        Quickshell.execDetached(["hyprctl", "eval", `hl.config({ general = { gaps_in = ${inner}, gaps_out = ${outer} }${look} })`]);
+        const look = Theme.gamemode ? "" : `, decoration = { rounding = ${Config.radius}, active_opacity = ${Config.activeOpacity}, inactive_opacity = ${Config.inactiveOpacity}, blur = { enabled = ${Config.blur} } }, animations = { enabled = ${Config.animations} }`;
+        Quickshell.execDetached(["hyprctl", "eval", `hl.config({ general = { gaps_in = ${inner}, gaps_out = ${outer}, border_size = ${Config.borderWidth} }${look} })`]);
     }
 
-    readonly property string lookKey: [Theme.gamemode, Config.gapsIn, Config.gapsOut, Config.gameGapsIn, Config.gameGapsOut, Config.radius, Config.activeOpacity, Config.inactiveOpacity, Config.blur].join(",")
+    readonly property string lookKey: [Theme.gamemode, Config.gapsIn, Config.gapsOut, Config.gameGapsIn, Config.gameGapsOut, Config.borderWidth, Config.radius, Config.activeOpacity, Config.inactiveOpacity, Config.blur, Config.animations].join(",")
     onLookKeyChanged: gapsDelay.restart()
     Component.onCompleted: gapsDelay.restart()
 
     // Default's look, for the next start; long enough for Config to save it
-    readonly property string savedKey: [Config.gapsIn, Config.gapsOut, Config.radius, Config.activeOpacity, Config.inactiveOpacity, Config.blur].join(",")
+    readonly property string savedKey: [Config.gapsIn, Config.gapsOut, Config.borderWidth, Config.radius, Config.activeOpacity, Config.inactiveOpacity, Config.blur, Config.animations].join(",")
     onSavedKeyChanged: saveDelay.restart()
 
     Timer {
@@ -89,7 +90,7 @@ Singleton {
         function onRawEvent(event: HyprlandEvent): void {
             if (event.name === "activelayout")
                 devices.running = true;
-            // a reload resets the gaps, corners and blur to hyprland's config
+            // a reload resets the gaps, corners, blur and animations to hyprland's config
             else if (event.name === "configreloaded") {
                 gapsDelay.restart();
                 if (Theme.gamemode)

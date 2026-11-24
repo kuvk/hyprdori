@@ -176,11 +176,13 @@ SETTING_DEFAULTS = {
     "cursorSize": 24,
     # Hyprland's look in Default (hyprland.lua.tpl)
     "radius": 8,
+    "borderWidth": 2,
     "gapsIn": 5,
     "gapsOut": 10,
     "activeOpacity": 0.986,
     "inactiveOpacity": 0.968,
     "blur": True,
+    "animations": True,
     "iconTheme": "Papirus",
 }
 
@@ -450,9 +452,11 @@ def load_theme(name: str) -> dict:
         "hypr_gaps_in": str(int(shell["gapsIn"])),
         "hypr_gaps_out": str(int(shell["gapsOut"])),
         "hypr_rounding": str(int(shell["radius"])),
+        "hypr_border_size": str(int(shell["borderWidth"])),
         "hypr_active_opacity": f"{float(shell['activeOpacity']):g}",
         "hypr_inactive_opacity": f"{float(shell['inactiveOpacity']):g}",
         "hypr_blur": "true" if shell["blur"] else "false",
+        "hypr_animations": "true" if shell["animations"] else "false",
         # the login screen, as the lock screen: the theme's colors
         "login_avatar": colors["accent"],
         "login_inputOutline": colors["accent"],

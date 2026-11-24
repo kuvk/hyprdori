@@ -12,7 +12,9 @@ return {
   gaps_in = {{ hypr_gaps_in }},
   gaps_out = {{ hypr_gaps_out }},
   rounding = {{ hypr_rounding }},
+  border_size = {{ hypr_border_size }},
   active_opacity = {{ hypr_active_opacity }},
   inactive_opacity = {{ hypr_inactive_opacity }},
   blur = {{ hypr_blur }},
+  animations = {{ hypr_animations }},
 }

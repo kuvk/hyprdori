@@ -36,8 +36,9 @@ out. After Omarchy's omarchy-theme-color and omarchy-theme-set-templates
                           wallpaper picker, hyprdori-logo-wallpaper --window)
   hyprdori-theme-set --window-buttons on|off
                           close button in GTK apps (Settings > Style saves the choice)
-  hyprdori-theme-set --hypr      Hyprland's gaps, corners, window opacity and blur from Settings
-                          into its generated theme.lua (the shell runs it on a change)
+  hyprdori-theme-set --hypr      Hyprland's gaps, border width, corners, window opacity, blur
+                          and animations from Settings into its generated theme.lua (the
+                          shell runs it on a change)
   hyprdori-theme-set --shape rounded|square
                           corners of the status lines in tmux, nvim and yazi, Neovim's
                           windows, LazyGit, btop and the starship prompt
