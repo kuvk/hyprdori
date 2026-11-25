@@ -5,7 +5,9 @@
 # ESP/arch), copies the kernel there, builds the image, removes the copies in /boot, and writes
 # the boot menu again (limine/install.sh, with the options it was installed with). Install the
 # kernel's -headers package first where DKMS modules (NVIDIA's) must be built for it. With the
-# ESP at /boot, the stock preset puts them on it already: only the menu is written again.
+# ESP at /boot, the stock preset puts them on it already: only a preset that builds a unified
+# kernel image instead (archinstall can set that up) is written, and its old image removed;
+# else only the menu is written again.
 #
 #   hyprdori-kernel-preset            every installed kernel whose preset isn't Hyprdori's yet,
 #                                     and the menu written again if a kernel on the ESP is
@@ -45,8 +47,13 @@ else
     wanted=()
     for base in /usr/lib/modules/*/pkgbase; do
         name=$(<"$base")
-        [[ $kernels == /boot ]] && continue  # the stock preset's place, on the ESP already
-        grep -qs "^ALL_kver=\"$kernels/" "/etc/mkinitcpio.d/$name.preset" || wanted+=("$name")
+        preset=/etc/mkinitcpio.d/$name.preset
+        if [[ $kernels == /boot ]]; then
+            # the stock preset's place, on the ESP already, unless it builds a unified kernel image
+            grep -qsE '^[[:space:]]*default_uki=' "$preset" && wanted+=("$name")
+        else
+            grep -qs "^ALL_kver=\"$kernels/" "$preset" || wanted+=("$name")
+        fi
     done
 fi
 # The kernels on the ESP with an image, and the menu's kernel entries (//name, not the
@@ -77,6 +84,9 @@ sudo -v
 for name in "${wanted[@]+"${wanted[@]}"}"; do
     preset=/etc/mkinitcpio.d/$name.preset
     [[ -e $preset ]] && sudo cp -n "$preset" "$preset.bak"
+    # its unified kernel images: they'd keep the old kernel from the next update on
+    ukis=()
+    [[ -e $preset ]] && mapfile -t ukis < <(sed -n -E 's/^[[:space:]]*[a-z]+_uki="?([^"]*)"?.*/\1/p' "$preset")
     sudo tee "$preset" >/dev/null <<EOF
 # mkinitcpio preset for $name; the kernel and image go to the ESP (hyprdori-kernel-preset)
 ALL_kver="$kernels/vmlinuz-$name"
@@ -85,7 +95,10 @@ default_image="$kernels/initramfs-$name.img"
 EOF
     sudo install -D -m 0644 "$(kernel_file "$name")" "$kernels/vmlinuz-$name"
     sudo mkinitcpio -p "$name"
-    sudo rm -f "/boot/vmlinuz-$name" "/boot/initramfs-$name.img" "/boot/initramfs-$name-fallback.img"
+    # the stock preset's copies, unless that's where they go now (the ESP at /boot)
+    [[ $kernels == /boot ]] ||
+        sudo rm -f "/boot/vmlinuz-$name" "/boot/initramfs-$name.img" "/boot/initramfs-$name-fallback.img"
+    ((${#ukis[@]} == 0)) || sudo rm -f "${ukis[@]}"
     echo "$name: kernel and image in $kernels"
 done
 

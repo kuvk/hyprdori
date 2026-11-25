@@ -332,7 +332,8 @@ done
 # takes the place of theirs (uninstall.sh offers them back)
 mapfile -t hooks < <(pacman -Qq 2>/dev/null | grep -xE 'limine-(mkinitcpio-hook|entry-tool|dracut-support)(-git)?')
 # Room for the kernels on the ESP: about 200 MB each (the kernel, an image with NVIDIA's
-# modules), less what's there already; none needed when they're in /boot on it
+# modules), less what's there already; none needed when they're in /boot on it (an image in
+# place of a unified kernel image takes about the room the image took)
 esp_room=true
 if [[ -n $kernels && $kernels != /boot ]]; then
     need_mb=0
@@ -810,15 +811,29 @@ if $splash; then
 fi
 has_option() { [[ " $1 " == *" ${2%%=*}="* || " $1 " == *" $2 "* ]]; }
 
+# The presets Hyprdori writes, a kernel and its image in the menu's kernels folder: every one
+# not there yet, or with the ESP at /boot (the stock presets' place) only one that builds a
+# unified kernel image instead (archinstall can set that up), as Limine's menu boots a kernel
+# and its image
+needs_preset() {
+    if [[ $kernels == /boot ]]; then
+        grep -qE '^[[:space:]]*default_uki=' "$1"
+    elif grep -q "^ALL_kver=\"$kernels/" "$1"; then
+        return 1
+    fi
+}
+stale_ukis=()
+
 if $menu; then
-    # Kernels and images on the ESP, where Limine can read them (it reads only FAT): with the ESP
-    # at /boot they're there already, and the presets stay as they are
+    # Kernels and images on the ESP, where Limine can read them (it reads only FAT)
     [[ $kernels == /boot ]] || sudo install -d "$kernels"
     for preset in /etc/mkinitcpio.d/*.preset; do
-        [[ $kernels == /boot || ! -e $preset ]] && break
+        [[ -e $preset ]] && needs_preset "$preset" || continue
         kernel=$(basename "$preset" .preset)
-        grep -q "^ALL_kver=\"$kernels/" "$preset" && continue
         [[ -e $preset.bak ]] || { sudo cp "$preset" "$preset.bak" && record backup "$preset" "$preset.bak"; }
+        # its unified kernel images, removed once Limine is in place: they'd keep the old kernel
+        # from the next update on (uninstall.sh's preset builds them again)
+        mapfile -t -O "${#stale_ukis[@]}" stale_ukis < <(sed -n -E 's/^[[:space:]]*[a-z]+_uki="?([^"]*)"?.*/\1/p' "$preset")
         sudo tee "$preset" >/dev/null <<EOF
 # mkinitcpio preset for $kernel; the kernel and image go to the ESP (install.sh)
 ALL_kver="$kernels/vmlinuz-$kernel"
@@ -861,7 +876,10 @@ if $splash; then
 elif $rebuild; then
     sudo mkinitcpio -P
 fi
-$menu && sudo "$hyprdori/limine/install.sh" --theme
+if $menu && sudo "$hyprdori/limine/install.sh" --theme && ((${#stale_ukis[@]})); then
+    sudo rm -f "${stale_ukis[@]}"
+    echo "Removed the unified kernel images the presets built before: ${stale_ukis[*]}"
+fi
 # Another boot loader keeps its own kernel options: the splash's, printed to add there
 add=()
 if $splash && ! $menu; then

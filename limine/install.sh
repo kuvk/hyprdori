@@ -188,6 +188,12 @@ found_kernels() {
     return 0
 }
 mapfile -t found < <(found_kernels)
+# a kernel without its image isn't listed: said, as its preset may build a unified kernel image
+# instead, which hyprdori-kernel-preset changes
+for k in $(ls "$kernels" 2>/dev/null | sed -n 's/^vmlinuz-//p'); do
+    [[ -e $kernels/initramfs-$k.img ]] ||
+        echo "$k: no $kernels/initramfs-$k.img, so not in the menu (its preset: /etc/mkinitcpio.d/$k.preset; hyprdori-kernel-preset $k)" >&2
+done
 # Snapshots in the menu: a btrfs root with limine-snapper-sync (install.sh sets it up)
 snapshots=false
 [[ $(findmnt -no FSTYPE / 2>/dev/null) == btrfs ]] && command -v limine-snapper-sync >/dev/null && snapshots=true
