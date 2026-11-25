@@ -23,5 +23,5 @@ gui:
       - '{{ foreground }}'
     searchingActiveBorderColor:
       - '{{ yellow }}'
-  authorColors:
-    '*': '{{ magenta }}'
+    authorColors:
+      '*': '{{ magenta }}'
