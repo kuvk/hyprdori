@@ -26,6 +26,21 @@ main() {
     $tty || [[ " $* " == *" --dry-run "* ]] || die "no terminal for the install's questions: run this in a terminal"
 
     if ! command -v git >/dev/null; then
+        # install.sh's log runs it under script, in a terminal of its own, and sudo keeps the
+        # password for one terminal only: git's install, the clone and install.sh run in one such
+        # session here, with the log install.sh would start, so the password is asked once
+        if $tty && [[ -t 1 && -z ${HYPRDORI_INSTALL_LOG:-} && " $* " != *" --dry-run "* ]] && command -v script >/dev/null; then
+            local logs=${XDG_STATE_HOME:-$HOME/.local/state}/hyprdori/logs
+            mkdir -p "$logs"
+            HYPRDORI_INSTALL_LOG=$logs/install-$(date +%F_%H-%M-%S).log
+            export HYPRDORI_INSTALL_LOG
+            # script runs the command with $SHELL: bash for the quoting, the login shell's name kept;
+            # main reaches it exported (the log's first line names the command), and goes no further
+            export -f main
+            exec env SHELL=/bin/bash script -qefc \
+                "set -euo pipefail; SHELL=$(printf %q "${SHELL:-/bin/bash}"); export -nf main; main $(printf '%q ' "$@")" \
+                "$HYPRDORI_INSTALL_LOG" </dev/tty
+        fi
         printf '==> Installing git (asks for the sudo password)\n'
         sudo pacman -S --needed --noconfirm git
     fi

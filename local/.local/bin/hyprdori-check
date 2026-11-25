@@ -32,6 +32,11 @@ for file in local/.local/bin/hyprdori-update uninstall.sh; do
         fail "not_stowed differs between install.sh and $file"
 done
 
+# The install log's folder and name: boot.sh starts it when it installs git, install.sh otherwise
+log_lines() { grep -E '^\s*(local )?(logs|HYPRDORI_INSTALL_LOG)=' "$1" | sed -E 's/^\s*(local )?//'; }
+[[ -n $(log_lines install.sh) && $(log_lines install.sh) == "$(log_lines boot.sh)" ]] ||
+    fail "the install log's path differs between install.sh and boot.sh"
+
 # The mkinitcpio preset that puts a kernel and its image on the ESP: the same in install.sh and
 # hyprdori-kernel-preset (their variables named alike: the kernel, the ESP's kernel folder)
 preset_lines() {
