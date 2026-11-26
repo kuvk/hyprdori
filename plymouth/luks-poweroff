@@ -3,8 +3,16 @@
 # unlocking a drive fails. With rd.luks.options=timeout=90s,tries=3 that is 90 seconds
 # without a password, or three wrong ones. The splash shows "Go back to the Shadow!" first.
 # The drives unlock one after another, so the prompts and tries all belong to the first.
+# In busybox's initramfs (the encrypt hook, with this one before it) its run-time part does the
+# same: luks-poweroff.hook, installed as /etc/initcpio/hooks/luks-poweroff.
 
 build() {
+    # busybox's initramfs: the systemd hook, listed before this one, isn't in it
+    if [[ ! -e $BUILDROOT/usr/lib/systemd/systemd ]]; then
+        add_runscript
+        return
+    fi
+
     add_binary sleep
 
     install -D -m 0644 /dev/stdin "$BUILDROOT/etc/systemd/system/luks-poweroff.service" <<'EOF'
@@ -43,5 +51,5 @@ EOF
 }
 
 help() {
-    echo "Powers off when unlocking an encrypted drive fails (sd-encrypt)."
+    echo "Powers off when unlocking an encrypted drive fails (sd-encrypt, or encrypt with this hook before it)."
 }

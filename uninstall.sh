@@ -131,13 +131,23 @@ MSG
     fi
 
     # --- Splash -----------------------------------------------------------------------------------
-    local splash_options=(splash initramfs_async=0 systemd.tty.term.console=dumb rd.luks.options=timeout=90s,tries=3 systemd.default_device_timeout_sec=infinity)
+    local splash_options=(splash initramfs_async=0 systemd.tty.term.console=dumb plymouth.ignore-serial-consoles rd.luks.options=timeout=90s,tries=3 systemd.default_device_timeout_sec=infinity)
     if $splash; then
         step "Boot splash"
-        run sudo sed -i -E '/^HOOKS=/{s/ plymouth\b//; s/ luks-poweroff\b//}' /etc/mkinitcpio.conf
-        run sudo rm -f /etc/initcpio/install/luks-poweroff
+        # Plymouth's hook only when install.sh added it (its record): one that was there before,
+        # with another splash, stays
+        if ! $have_record || logged hook | grep -qx plymouth; then
+            run sudo sed -i -E '/^HOOKS=/s/ plymouth\b//' /etc/mkinitcpio.conf
+        fi
+        run sudo sed -i -E '/^HOOKS=/s/ luks-poweroff\b//' /etc/mkinitcpio.conf
+        run sudo rm -f /etc/initcpio/install/luks-poweroff /etc/initcpio/hooks/luks-poweroff
         run sudo rm -rf /usr/share/plymouth/themes/hyprdori /etc/systemd/system/plymouth-quit.service.d/hyprdori.conf
-        [[ -f /etc/plymouth/plymouthd.conf ]] && run sudo sed -i '/^Theme=hyprdori$/d' /etc/plymouth/plymouthd.conf
+        # Plymouth's settings as they were (the other splash's theme), else without Hyprdori's theme
+        if [[ -f /etc/plymouth/plymouthd.conf.bak ]]; then
+            run sudo mv /etc/plymouth/plymouthd.conf.bak /etc/plymouth/plymouthd.conf
+        elif [[ -f /etc/plymouth/plymouthd.conf ]]; then
+            run sudo sed -i '/^Theme=hyprdori$/d' /etc/plymouth/plymouthd.conf
+        fi
         rebuild=true
         if ! $menu; then
             note "Remove the splash's kernel options from the boot loader's own, where they were added: ${splash_options[*]}"

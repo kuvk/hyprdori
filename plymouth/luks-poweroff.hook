@@ -1,0 +1,44 @@
+#!/bin/sh
+# Run-time part of the luks-poweroff mkinitcpio hook, for busybox's initramfs only (the encrypt
+# hook; the systemd initramfs never runs it). Before encrypt, the drive in cryptdevice= is
+# unlocked through the splash with three tries, as with sd-encrypt: after the third wrong
+# password, or 90 seconds without one, the splash shows "Go back to the Shadow!" and the machine
+# powers off. encrypt then finds the drive open and goes on. Anything else is left to encrypt as
+# it is: no splash running, a keyfile, options after the name in cryptdevice=.
+
+luks_poweroff_farewell() {
+    plymouth display-message --text=hyprdori-farewell
+    sleep 2
+    poweroff -f
+}
+
+run_hook() {
+    [ -n "$cryptdevice" ] || return 0
+    [ -z "$cryptkey" ] && [ ! -f /crypto_keyfile.bin ] || return 0
+    command -v plymouth >/dev/null 2>&1 && plymouth --ping 2>/dev/null || return 0
+    IFS=: read -r lp_dev lp_name lp_options <<EOF
+$cryptdevice
+EOF
+    [ -n "$lp_name" ] && [ -z "$lp_options" ] || return 0
+    [ -b "/dev/mapper/$lp_name" ] && return 0
+    lp_device=$(resolve_device "$lp_dev" "$(getarg rootdelay)") || return 0
+    modprobe -a -q dm-crypt >/dev/null 2>&1
+    cryptsetup isLuks "$lp_device" >/dev/null 2>&1 || return 0
+
+    # the 90 seconds, stopped with its sleep once the drive unlocks (no process left behind)
+    (
+        trap 'kill "$lp_sleep" 2>/dev/null; exit 0' TERM
+        sleep 90 &
+        lp_sleep=$!
+        wait "$lp_sleep"
+        [ -b "/dev/mapper/$lp_name" ] || luks_poweroff_farewell
+    ) &
+    lp_timer=$!
+    if plymouth ask-for-password --prompt="A password is required to access the $lp_name volume" \
+        --number-of-tries=3 --command="cryptsetup open --type luks --key-file=- $lp_device $lp_name"; then
+        kill "$lp_timer" 2>/dev/null
+    else
+        kill "$lp_timer" 2>/dev/null
+        luks_poweroff_farewell
+    fi
+}

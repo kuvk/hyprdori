@@ -800,11 +800,13 @@ fi
 # under Plymouth: since kernel 7.1 the initramfs is unpacked while /init already runs, which can
 # make Plymouth quit (the disk password asked in plain text); since systemd 257 it asks the
 # console its size and can wait for a reply that never comes under Plymouth (a black screen at
-# "Starting Switch Root" until a key is pressed)
+# "Starting Switch Root" until a key is pressed). And the splash with a serial console too: with
+# one (systemd-stub adds console= for the firmware's, as in a VM with a serial port), Plymouth
+# shows text only
 running=$(sed -E 's/(^| )(BOOT_IMAGE|initrd)=[^ ]*//g; s/^ +//' /proc/cmdline)
 extra=(quiet loglevel=3 systemd.show_status=false vt.global_cursor_default=0)
 if $splash; then
-    extra+=(splash initramfs_async=0 systemd.tty.term.console=dumb)
+    extra+=(splash initramfs_async=0 systemd.tty.term.console=dumb plymouth.ignore-serial-consoles)
     if [[ $running == *rd.luks.name=* ]] && grep -qE '^HOOKS=.*\bsd-encrypt\b' "$mkinit"; then
         extra+=(rd.luks.options=timeout=90s,tries=3 systemd.default_device_timeout_sec=infinity)
     fi
@@ -872,6 +874,11 @@ fi
 # The splash builds the initramfs (and with the menu, the kernels on the ESP); without it,
 # changes above are built here. Limine then finds the kernels there
 if $splash; then
+    # Plymouth's settings, with the theme another splash had (archinstall can set one up)
+    plyconf=/etc/plymouth/plymouthd.conf
+    if [[ -f $plyconf && ! -e $plyconf.bak ]] && ! grep -qx 'Theme=hyprdori' "$plyconf"; then
+        sudo cp "$plyconf" "$plyconf.bak" && record backup "$plyconf" "$plyconf.bak"
+    fi
     sudo "$hyprdori/plymouth/install.sh" --theme
 elif $rebuild; then
     sudo mkinitcpio -P
@@ -896,11 +903,19 @@ if command -v flatpak >/dev/null; then
     while read -r app; do record flatpak "$app"; done < <(comm -13 "$flatpaks_before" <(flatpak list --app --columns=application 2>/dev/null | sort))
 fi
 if ((${#add[@]})); then
+    # where they go: a unified kernel image carries them in it, whatever boots it
+    if grep -qsE '^[[:space:]]*default_uki=' /etc/mkinitcpio.d/*.preset; then
+        where="Unified kernel images (the presets build them): at the end of the line in /etc/kernel/cmdline, then sudo mkinitcpio -P."
+    elif [[ " ${other_loaders[*]} " == *" GRUB "* ]]; then
+        where="GRUB: GRUB_CMDLINE_LINUX_DEFAULT in /etc/default/grub, then sudo grub-mkconfig -o /boot/grub/grub.cfg."
+    elif [[ " ${other_loaders[*]} " == *" systemd-boot "* ]]; then
+        where="systemd-boot: the options line of each entry in /boot/loader/entries/."
+    else
+        where="The boot loader's options for the kernel."
+    fi
     note "The boot splash needs these kernel options, added to the boot loader's own (${other_loaders[*]:-the boot loader}):
   ${add[*]}
-GRUB: GRUB_CMDLINE_LINUX_DEFAULT in /etc/default/grub, then sudo grub-mkconfig -o /boot/grub/grub.cfg.
-systemd-boot: the options line of each entry in /boot/loader/entries/ (or /etc/kernel/cmdline for
-unified kernel images, then sudo mkinitcpio -P)."
+$where"
 fi
 [[ $login == none ]] && note "No login screen: log in on the console and run Hyprland to start the desktop."
 cat <<MSG

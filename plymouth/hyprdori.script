@@ -47,8 +47,10 @@ fun refresh_callback() {
 
   global.animation_frame++;
 
-  # A password has been checked for 3 seconds with no answer either way: show the progress
-  if (global.checking_frame >= 0 && global.animation_frame - global.checking_frame > 150) {
+  # A password has been checked for 10 seconds with no answer either way: show the progress.
+  # The answer is systemd reporting the boot going on (update_status_callback), at once with
+  # the systemd initramfs, after the switch to the system with busybox's; or asked again
+  if (global.checking_frame >= 0 && global.animation_frame - global.checking_frame > 500) {
     start_boot_progress();
   }
 
@@ -207,11 +209,11 @@ fun start_boot_progress() {
 }
 
 # systemd reports units starting: after a password, the boot carries on. Wait a moment
-# (15 frames) before showing the progress: when the drives failed to unlock, the unit
-# starting is luks-poweroff, and its farewell message arrives right after.
+# (15 frames, set against the 500 above) before showing the progress: when the drives failed to
+# unlock, the unit starting is luks-poweroff, and its farewell message arrives right after.
 fun update_status_callback(status) {
   if (global.farewell == 0 && global.checking_frame >= 0) {
-    global.checking_frame = global.animation_frame - 150 + 15;
+    global.checking_frame = global.animation_frame - 500 + 15;
   }
 }
 

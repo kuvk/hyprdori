@@ -21,9 +21,10 @@
 # Should those fail to start, Ctrl+Alt+F2 gives a text login. With another login screen or none,
 # the splash quits as Plymouth's own does.
 #
-# With the systemd initramfs (sd-encrypt), also installs the luks-poweroff mkinitcpio hook:
-# failing to unlock the drives powers off. The limits come from the kernel options:
-# rd.luks.options=timeout=90s,tries=3 systemd.default_device_timeout_sec=infinity
+# With an encrypted drive, also installs the luks-poweroff mkinitcpio hook: failing to unlock the
+# drives powers off. With the systemd initramfs (sd-encrypt) the limits come from the kernel
+# options, rd.luks.options=timeout=90s,tries=3 systemd.default_device_timeout_sec=infinity; with
+# busybox's (encrypt) the hook asks for the password itself, with the same limits.
 
 set -euo pipefail
 
@@ -192,8 +193,14 @@ theme=/usr/share/plymouth/themes/hyprdori
 install -d -m 0755 "$theme"
 install -m 0644 "$build"/* "$theme"/
 install -D -m 0644 "$here/luks-poweroff" /etc/initcpio/install/luks-poweroff
+install -D -m 0644 "$here/luks-poweroff.hook" /etc/initcpio/hooks/luks-poweroff
+# after sd-encrypt (its units' failure), or before busybox's encrypt (it asks first)
 if ! grep -q '^HOOKS=.*\bluks-poweroff\b' /etc/mkinitcpio.conf; then
-    sed -i '/^HOOKS=/s/\bsd-encrypt\b/sd-encrypt luks-poweroff/' /etc/mkinitcpio.conf
+    if grep -qE '^HOOKS=.*\bsd-encrypt\b' /etc/mkinitcpio.conf; then
+        sed -i '/^HOOKS=/s/\bsd-encrypt\b/sd-encrypt luks-poweroff/' /etc/mkinitcpio.conf
+    else
+        sed -i -E '/^HOOKS=/s/([( ])encrypt\b/\1luks-poweroff encrypt/' /etc/mkinitcpio.conf
+    fi
 fi
 # With Hyprdori's login screen, the splash kept on screen until it or the desktop replaces it
 # (sddm.service starts after plymouth-quit.service), so no text console shows in between. Not
