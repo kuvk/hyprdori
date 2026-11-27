@@ -128,6 +128,17 @@ MSG
     local rebuild=false
     local -a removed_options=()
 
+    # A preset put back from its .bak. The image Hyprdori's preset built goes when the old preset
+    # builds none (a unified kernel image instead, as archinstall can set up): left in /boot, it
+    # would go stale at the next kernel update
+    put_back_preset() {
+        local image old_builds_image=false
+        image=$(sed -n -E 's/^default_image="?([^"]*)"?$/\1/p' "$1" 2>/dev/null)
+        grep -qsE '^[[:space:]]*default_image=' "$1.bak" && old_builds_image=true
+        run sudo mv "$1.bak" "$1"
+        [[ -n $image ]] && ! $old_builds_image && run sudo rm -f "$image"
+    }
+
     # --- Boot menu ------------------------------------------------------------------------------
     local remove_limine=false own_menu=false
     if $menu; then
@@ -230,7 +241,7 @@ MSG
     if $menu && $remove_limine; then
         local preset base modules
         for preset in /etc/mkinitcpio.d/*.preset.bak; do
-            [[ -e $preset ]] && run sudo mv "$preset" "${preset%.bak}"
+            [[ -e $preset ]] && put_back_preset "${preset%.bak}"
         done
         for modules in /usr/lib/modules/*/pkgbase; do
             base=$(<"$modules")
@@ -251,7 +262,7 @@ MSG
         local preset kver modules line orig back
         for preset in /etc/mkinitcpio.d/*.preset.bak; do
             [[ -e $preset ]] || continue
-            run sudo mv "$preset" "${preset%.bak}"
+            put_back_preset "${preset%.bak}"
             kver=$(sed -n -E 's/^ALL_kver="?([^"]*)"?$/\1/p' "${preset%.bak}" 2>/dev/null)
             for modules in /usr/lib/modules/*/pkgbase; do
                 [[ -n $kver && $(<"$modules") == "$(basename "$preset" .preset.bak)" ]] &&
