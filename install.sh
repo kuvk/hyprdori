@@ -887,9 +887,21 @@ if $splash; then
 elif $rebuild; then
     sudo mkinitcpio -P
 fi
-if $menu && sudo "$hyprdori/limine/install.sh" --theme && ((${#stale_ukis[@]})); then
-    sudo rm -f "${stale_ukis[@]}"
-    echo "Removed the unified kernel images the presets built before: ${stale_ukis[*]}"
+# On the menu's first install: whether Limine's folder on the ESP and its boot entry were there
+# before (a Limine of the machine's own). uninstall.sh removes them, when it puts that Limine's
+# own menu back, only where they're Hyprdori's
+efi_folder= efi_entry=
+if $menu && ! installed menu; then
+    efi_folder=there efi_entry=there
+    on_esp "$esp_at/EFI/limine/BOOTX64.EFI" || efi_folder=added
+    efibootmgr 2>/dev/null | grep -qi '\\EFI\\limine\\BOOTX64\.EFI' || efi_entry=added
+fi
+if $menu && sudo "$hyprdori/limine/install.sh" --theme; then
+    [[ -n $efi_folder ]] && record limine-efi "$efi_folder" "$efi_entry"
+    if ((${#stale_ukis[@]})); then
+        sudo rm -f "${stale_ukis[@]}"
+        echo "Removed the unified kernel images the presets built before: ${stale_ukis[*]}"
+    fi
 fi
 # Another boot loader keeps its own kernel options: the splash's, printed to add there
 add=()

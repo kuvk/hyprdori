@@ -259,10 +259,26 @@ MSG
             done
         done
         run sudo rm -f "$esp/limine.conf" "$esp/EFI/limine/wallpaper.png" /etc/default/limine
+        local reads_own=false
         for line in "${set_aside[@]}"; do
             read -r orig back <<<"$line"
             { $dry || sudo -n test -e "$back"; } && run sudo mv "$back" "$orig"
+            # a menu the Limine in EFI/limine reads: next to it, or at the ESP's top
+            case $orig in "$esp/EFI/limine/limine.conf" | "$esp/limine.conf" | "$esp/limine/limine.conf") reads_own=true ;; esac
         done
+        # Hyprdori's Limine beside the own one (archinstall's in EFI/BOOT, say): first in the boot
+        # order, it would find no menu. Its folder and boot entry go, as far as they're Hyprdori's
+        # (the record; machines installed before it: both, when it doesn't read the own menu)
+        if ! $reads_own; then
+            local efi_folder=added efi_entry=added entry recorded
+            recorded=$(logged limine-efi | tail -1)
+            [[ -n $recorded ]] && read -r efi_folder efi_entry <<<"$recorded"
+            [[ $efi_folder == added ]] && run sudo rm -rf "$esp/EFI/limine"
+            if [[ $efi_entry == added ]]; then
+                entry=$(efibootmgr 2>/dev/null | sed -n -E 's/^Boot([0-9A-Fa-f]{4})\*? .*\\EFI\\limine\\BOOTX64\.EFI.*/\1/Ip' | head -1)
+                [[ -n $entry ]] && run sudo efibootmgr -q -b "$entry" -B
+            fi
+        fi
         if ((${#tools[@]})); then
             run paru -S --needed --noconfirm --skipreview "${tools[@]}" || note "Not installed again: ${tools[*]} (paru -S)"
         fi
