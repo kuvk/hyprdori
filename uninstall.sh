@@ -86,14 +86,22 @@ uninstall() {
     installed menu && menu=true
     installed splash && splash=true
     installed login && login=true
-    # boot loaders other than Limine, which could boot the machine without it
-    [[ -e /boot/grub/grub.cfg ]] && others+=(GRUB)
-    for dir in /efi /boot /boot/efi; do
-        mountpoint -q "$dir" || continue
-        { [[ -e $dir/EFI/systemd/systemd-bootx64.efi ]] || sudo -n test -e "$dir/EFI/systemd/systemd-bootx64.efi"; } 2>/dev/null && others+=(systemd-boot)
-        { [[ -e $dir/EFI/refind/refind_x64.efi ]] || sudo -n test -e "$dir/EFI/refind/refind_x64.efi"; } 2>/dev/null && others+=(rEFInd)
-    done
-    mapfile -t others < <(printf '%s\n' "${others[@]}" | sed '/^$/d' | sort -u)
+    # Boot loaders other than Limine, which could boot the machine without it. Looked for once
+    # sudo has the password: an ESP mounted for root only (archinstall's) is read through it
+    find_others() {
+        local file dir
+        on_disk() { { [[ -e $1 ]] || sudo -n test -e "$1"; } 2>/dev/null; }
+        # GRUB by its menu: in /boot, or on the ESP where archinstall can put it (/boot/efi/grub)
+        for file in /boot/grub/grub.cfg /efi/grub/grub.cfg /boot/efi/grub/grub.cfg; do
+            on_disk "$file" && { others+=(GRUB); break; }
+        done
+        for dir in /efi /boot /boot/efi; do
+            mountpoint -q "$dir" || continue
+            on_disk "$dir/EFI/systemd/systemd-bootx64.efi" && others+=(systemd-boot)
+            on_disk "$dir/EFI/refind/refind_x64.efi" && others+=(rEFInd)
+        done
+        mapfile -t others < <(printf '%s\n' "${others[@]}" | sed '/^$/d' | sort -u)
+    }
 
     cat <<MSG
 This removes Hyprdori from this machine:
@@ -112,6 +120,10 @@ MSG
     if ! $dry; then
         "$bin/hyprdori-awake" $$ "the removal" || { echo "Nothing changed."; exit 0; }
         "$bin/hyprdori-sudo-hold" $$ || { echo "No password, nothing changed." >&2; exit 1; }
+    fi
+    find_others
+    if $dry && [[ -n $esp && ! -x $esp ]] && ! sudo -n true 2>/dev/null; then
+        note "The ESP ($esp) is root's: a dry run without sudo's password doesn't see boot loaders on it (sudo -v first, then the dry run)."
     fi
     local rebuild=false
     local -a removed_options=()
@@ -346,12 +358,23 @@ PY
     step "Packages"
     if $have_record; then
         local pkgs=() apps=() pkg
-        while read -r pkg; do pacman -Q "$pkg" &>/dev/null && pkgs+=("$pkg"); done < <(logged package | sort -u)
+        # Limine stays where it still boots this machine (a plain menu, or its own back)
+        while read -r pkg; do
+            [[ $pkg == limine ]] && ! $remove_limine && continue
+            pacman -Q "$pkg" &>/dev/null && pkgs+=("$pkg")
+        done < <(logged package | sort -u)
         if ((${#pkgs[@]})); then
             echo "install.sh added ${#pkgs[@]} package(s) still installed; pacman lists them and asks (n keeps them all):"
             run sudo pacman -Rnsu "${pkgs[@]}" || note "Kept the packages."
         else
             echo "None of the packages install.sh added is installed."
+        fi
+        # SDDM removed with them while still the login screen: its link goes too, so the boot
+        # reaches the console without a failed unit
+        local dm_link=/etc/systemd/system/display-manager.service
+        if ! $dry && [[ -L $dm_link && ! -e $dm_link ]]; then
+            run sudo rm -f "$dm_link"
+            echo "No login screen: log in on the console"
         fi
         while read -r pkg; do flatpak info "$pkg" &>/dev/null && apps+=("$pkg"); done < <(logged flatpak | sort -u)
         if ((${#apps[@]})) && ask "Remove the Flathub apps install.sh added (${apps[*]})?" n; then

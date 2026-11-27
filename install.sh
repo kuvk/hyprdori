@@ -344,7 +344,11 @@ if [[ -n $kernels && $kernels != /boot ]]; then
     free_mb=$(($(df --output=avail -k "$esp_at" | tail -1) / 1024))
     ((free_mb >= need_mb)) || esp_room=false
 fi
-[[ -e /boot/grub/grub.cfg ]] && other_loaders+=(GRUB)
+# GRUB by its menu: in /boot, or on the ESP where archinstall can put it (/boot/efi/grub)
+grub_cfg=
+for file in /boot/grub/grub.cfg /efi/grub/grub.cfg /boot/efi/grub/grub.cfg; do
+    on_esp "$file" && { grub_cfg=$file; other_loaders+=(GRUB); break; }
+done
 $own_limine && other_loaders+=(Limine)
 mapfile -t other_loaders < <(printf '%s\n' "${other_loaders[@]}" | sed '/^$/d' | sort -u)
 # the login screen systemd starts (display-manager.service names it)
@@ -907,7 +911,7 @@ if ((${#add[@]})); then
     if grep -qsE '^[[:space:]]*default_uki=' /etc/mkinitcpio.d/*.preset; then
         where="Unified kernel images (the presets build them): at the end of the line in /etc/kernel/cmdline, then sudo mkinitcpio -P."
     elif [[ " ${other_loaders[*]} " == *" GRUB "* ]]; then
-        where="GRUB: GRUB_CMDLINE_LINUX_DEFAULT in /etc/default/grub, then sudo grub-mkconfig -o /boot/grub/grub.cfg."
+        where="GRUB: GRUB_CMDLINE_LINUX_DEFAULT in /etc/default/grub, then sudo grub-mkconfig -o $grub_cfg."
     elif [[ " ${other_loaders[*]} " == *" systemd-boot "* ]]; then
         where="systemd-boot: the options line of each entry in /boot/loader/entries/."
     else
