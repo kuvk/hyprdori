@@ -377,7 +377,10 @@ PY
     [[ -z $shell && $(getent passwd "$USER" | cut -d: -f7) == */zsh ]] &&
         ask "Login shell back to bash?" y && shell=/bin/bash
     [[ -n $shell ]] && run sudo chsh -s "$shell" "$USER"
-    if ask "Delete Hyprdori's settings and state too (~/.config/hyprdori, ~/.local/state/hyprdori, the shell's settings, the wallpaper choice)? Wallpapers in ~/.local/share/hyprdori stay" n; then
+    # Hyprdori's backgrounds: each theme's own and live wallpapers' converted copies, made again by
+    # a new install (the folders in backgrounds.json are the user's, never touched)
+    run rm -rf "${XDG_DATA_HOME:-$HOME/.local/share}/hyprdori"
+    if ask "Delete Hyprdori's settings and state too: the Settings choices, the wallpaper choice, ~/.config/hyprdori and ~/.local/state/hyprdori (with the install logs)? Kept, a new install starts with them" n; then
         run rm -rf "$HOME/.config/hyprdori" "$HOME/.local/state/hyprdori" "$HOME/.local/state/quickshell" "$HOME/.local/state/wallpaper"
     fi
 
