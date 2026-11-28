@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
-"""Lighter copies of videos for live wallpapers. With ffmpeg, as H.264: each video in
-~/.local/share/hyprdori/backgrounds/live/source (the wallpaper picker skips that folder) into
-~/.local/share/hyprdori/backgrounds/live, 2560 px wide at 30 fps. Settings by environment:
-LIVE_WALLPAPER_SRC and LIVE_WALLPAPER_OUT (the folders), TARGET_W, TARGET_FPS, CRF, PRESET.
+"""Lighter copies of videos for live wallpapers. With ffmpeg, as H.264, 2560 px wide at 30 fps, no
+sound: each video in the source folder (and its subfolders), into the output folder under the
+same name. A copy made before is made again. Settings by environment: TARGET_W, TARGET_FPS, CRF,
+PRESET.
 
-  hyprdori-convert-live-wallpapers
+  hyprdori-convert-live-wallpapers --source-dir DIR [--out-dir DIR]
+      --source-dir DIR   the videos to convert (.mp4, .webm, .mkv, .mov); they stay as they are
+      --out-dir DIR      where the copies go: ~/.local/share/hyprdori/backgrounds/live by
+                         default, which the wallpaper picker lists. Another folder is listed once
+                         it's a "live" one in ~/.config/hyprdori/backgrounds.json; neither may
+                         be the source folder or inside it
 """
 import os
-import sys
 import subprocess
+import sys
 from pathlib import Path
 
 HOME = Path(os.path.expanduser("~"))
-
-# Originals go in ~/.local/share/hyprdori/backgrounds/live/source (the picker skips that folder)
 LIVE_DIR = Path(os.environ.get("XDG_DATA_HOME", HOME / ".local/share")) / "hyprdori/backgrounds/live"
-SRC_DIR = Path(os.environ.get("LIVE_WALLPAPER_SRC", str(LIVE_DIR / "source"))).expanduser()
-OUT_DIR = Path(os.environ.get("LIVE_WALLPAPER_OUT", str(LIVE_DIR))).expanduser()
 
 TARGET_W = int(os.environ.get("TARGET_W", "2560"))
 TARGET_FPS = int(os.environ.get("TARGET_FPS", "30"))
@@ -55,27 +56,41 @@ def convert_one(src: Path, dst: Path) -> None:
     subprocess.run(cmd, check=False)
 
 def main() -> int:
-    if sys.argv[1:2] in (["-h"], ["--help"]):
-        print(__doc__.strip())
-        return 0
-    if not SRC_DIR.exists():
-        print(f"Source dir does not exist: {SRC_DIR}")
+    args = sys.argv[1:]
+    if not args or args[0] in ("-h", "--help"):
+        print((__doc__ or "").strip())
+        return 0 if args else 1
+    dirs = {"--source-dir": None, "--out-dir": str(LIVE_DIR)}
+    while args:
+        flag = args.pop(0)
+        if flag not in dirs or not args:
+            print(f"Unknown or incomplete: {flag} (see --help)", file=sys.stderr)
+            return 1
+        dirs[flag] = args.pop(0)
+    if dirs["--source-dir"] is None:
+        print("--source-dir DIR is needed (see --help)", file=sys.stderr)
+        return 1
+    src_dir = Path(dirs["--source-dir"]).expanduser().resolve()
+    out_dir = Path(dirs["--out-dir"]).expanduser().resolve()
+    if not src_dir.is_dir():
+        print(f"No such folder: {src_dir}", file=sys.stderr)
+        return 1
+    # the copies keep the originals' names: in the source folder they'd replace them
+    if out_dir == src_dir or out_dir.is_relative_to(src_dir):
+        print(f"The output folder can't be the source folder or inside it: {out_dir}", file=sys.stderr)
         return 1
 
-    videos = [p for p in SRC_DIR.rglob("*") if p.is_file() and p.suffix.lower() in EXTS]
-    videos.sort()
-
+    videos = sorted(p for p in src_dir.rglob("*") if p.is_file() and p.suffix.lower() in EXTS)
     if not videos:
-        print(f"No videos found in: {SRC_DIR}")
+        print(f"No videos found in: {src_dir}")
         return 0
 
     for src in videos:
-        rel = src.relative_to(SRC_DIR)
-        out = OUT_DIR / rel
+        rel = src.relative_to(src_dir)
         print(f"Converting: {rel}")
-        convert_one(src, out)
+        convert_one(src, out_dir / rel)
 
-    print(f"Done. Output in: {OUT_DIR}")
+    print(f"Done. Output in: {out_dir}")
     return 0
 
 if __name__ == "__main__":
