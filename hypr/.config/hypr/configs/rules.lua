@@ -234,7 +234,7 @@ hl.window_rule({
 
 -- Apps floating at a size relative to the screen
 local fitted = {
-  { name = "zathura", class = "^org\\.pwmt\\.zathura$", fit = { 0.4, 1 } },
+  { name = "zathura", class = "^org\\.pwmt\\.zathura$", fit = { 0.5, 1 } },
   { name = "qBittorrent", class = "^org\\.qbittorrent\\.qBittorrent$", title = ".*qBittorrent v.*", fit = { 0.65, 0.7 }, min_height = 560 },
   { name = "coolercontrol", class = "^org\\.coolercontrol\\.CoolerControl$", fit = { 0.65, 0.5 }, min_height = 560 },
   { name = "swayimg", class = "^swayimg$", fit = { 0.7, 0.8 } },
