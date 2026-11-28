@@ -174,7 +174,7 @@ fit_rule({
 -- lists below.
 hl.window_rule({
   name = "xwayland-floating-center",
-  match = { xwayland = true, float = true, class = "negative:^(steam|resolve|org\\.remmina\\.Remmina)$" },
+  match = { xwayland = true, float = true, class = "negative:^(vlc|steam|resolve|org\\.remmina\\.Remmina)$" },
   center = true,
 })
 
